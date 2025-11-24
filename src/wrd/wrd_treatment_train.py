@@ -30,11 +30,12 @@ from watertap.core.zero_order_properties import WaterParameterBlock
 
 from wrd.components.UF import *
 from wrd.components.chemical_addition import *
-from wrd.components.decarbonator import *
-from wrd.components.ro_system import *
 from wrd.components.translator_ZO_to_NaCl import (
     TranslatorZOtoNaCl,
 )
+from wrd.components.ro_system import *
+from wrd.components.decarbonator import *
+from wrd.components.UV_aop import *
 
 
 def build_wrd_system():
@@ -52,8 +53,7 @@ def build_wrd_system():
 
     # Add units
     m.fs.feed = Feed(property_package=m.fs.properties)
-    m.fs.product = Product(property_package=m.fs.properties)
-
+    
     # Chemical addition units
     m.fs.ammonia_addition = FlowsheetBlock(dynamic=False)
     build_chem_addition(m.fs.ammonia_addition, "ammonia", m.fs.properties)
@@ -79,7 +79,15 @@ def build_wrd_system():
     m.fs.ro_train = FlowsheetBlock(dynamic=False)
     build_wrd_ro_system(m.fs.ro_train, prop_package=m.fs.ro_properties)
 
-    # Translator block between RO to ZO property packages
+    # UV AOP - Still using ro_properties
+    m.fs.UV_aop = FlowsheetBlock(dynamic=False)
+    build_UV(m.fs.UV_aop, prop_package=m.fs.ro_properties)
+
+    # Decarbonator
+    m.fs.decarbonator = FlowsheetBlock(dynamic=False)
+    build_decarbonator(m.fs.decarbonator)
+
+    m.fs.product = Product(property_package=m.fs.properties)
 
     return m
 
@@ -106,6 +114,12 @@ def add_connections(m):
     m.fs.s05 = Arc(
         source=m.fs.translator_ZO_to_RO.outlet, destination=m.fs.ro_train.feed.inlet
     )
+    # Connect RO translator to UV_aop
+    m.fs.s06 = Arc(source=m.fs.ro_train.product.outlet,destination=m.fs.UV_aop.feed.inlet)
+    # Connect UV_aop to Decarbonator
+    m.fs.s07 = Arc(source=m.fs.UV_aop.product.outlet,destination=m.fs.decarbonator.feed.inlet)
+    # Connect Decarbonator to the Product
+    m.fs.s08 = Arc(source=m.fs.decarbonator.product.outlet,destination=m.fs.product.inlet)
 
     TransformationFactory("network.expand_arcs").apply_to(m)
 
@@ -126,6 +140,8 @@ def set_wrd_operating_conditions(m):
     set_UF_op_conditions(m.fs.UF)
     # set_ro_operation_conditions(m.fs.ro_train)
     set_ro_system_op_conditions(m.fs.ro_train)
+    set_UV_aop_op_conditions(m.fs.UV_aop)
+    set_decarbonator_op_conditions(m.fs.decarbonator)
 
 
 def initialize_wrd_system(m):
@@ -144,7 +160,12 @@ def initialize_wrd_system(m):
     # m.fs.ro_train.total_ro_feed.initialize()
     # build_ro_inlet_stream(m.fs.ro_train, test=False)
     # initialize_ro_units(m.fs.ro_train)
-
+    propagate_state(m.fs.s06)
+    initialize_UV_aop(m.fs.UV_aop)
+    propagate_state(m.fs.s07)
+    initialize_decarbonator(m.fs.decarbonator)
+    propagate_state(m.fs.s08)
+    m.fs.product.initialize()
 
 def set_wrd_system_scaling(m):
 
@@ -152,7 +173,8 @@ def set_wrd_system_scaling(m):
     set_chem_addition_scaling(blk=m.fs.hypochlorite_addition)
     add_UF_scaling(m.fs.UF)
     add_ro_scaling(m.fs.ro_train)
-
+    add_UV_scaling(m.fs.UV_aop)
+    add_decarbonator_scaling(m.fs.decarbonator)
 
 def solve(model, solver=None, tee=True, raise_on_failure=True):
     # ---solving---
