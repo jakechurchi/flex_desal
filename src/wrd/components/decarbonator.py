@@ -77,7 +77,7 @@ def set_inlet_conditions(blk, Qin=0.581, Cin=0, P_in=10.3):
     m.fs.ro_properties.set_default_scaling(
         "flow_mass_phase_comp", 1e2, index=("Liq", "NaCl")
     )
-    calculate_scaling_factors(m)
+
 
 
 def set_decarbonator_op_conditions(blk):
@@ -130,9 +130,10 @@ def report_decarbonator(blk, w=30):
 if __name__ == "__main__":
     m = build_system()  # optional input of stage_num
     print(f"{degrees_of_freedom(m)} degrees of freedom after build")
-    add_decarbonator_scaling(m.fs.decarb_system)
+    set_inlet_conditions(m.fs.decarb_system)
     set_decarbonator_op_conditions(m.fs.decarb_system)
-    set_inlet_conditions(m.fs.decarb_system)  # Calc_scaling_factors in this function
+    add_decarbonator_scaling(m.fs.decarb_system)
+    calculate_scaling_factors(m)
     print(
         f"{degrees_of_freedom(m)} degrees of freedom after setting op and inlet conditions"
     )
