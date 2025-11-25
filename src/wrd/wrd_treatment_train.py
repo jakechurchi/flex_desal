@@ -38,7 +38,7 @@ from wrd.components.translator_ZO_to_NaCl import (
 )
 from wrd.components.ro_system import *
 from wrd.components.decarbonator import *
-from wrd.components.UV_aop import *
+from wrd.components.uv_aop import *
 
 
 def build_wrd_system():
@@ -84,7 +84,7 @@ def build_wrd_system():
 
     # UV AOP - Still using ro_properties
     m.fs.UV_aop = FlowsheetBlock(dynamic=False)
-    build_UV(m.fs.UV_aop, prop_package=m.fs.ro_properties)
+    build_uv_aop(m.fs.UV_aop, prop_package=m.fs.ro_properties)
 
     # Decarbonator
     m.fs.decarbonator = FlowsheetBlock(dynamic=False)
@@ -143,7 +143,7 @@ def set_wrd_operating_conditions(m):
     set_UF_op_conditions(m.fs.UF)
     # set_ro_operation_conditions(m.fs.ro_train)
     set_ro_system_op_conditions(m.fs.ro_train)
-    set_UV_aop_op_conditions(m.fs.UV_aop)
+    set_uv_aop_op_conditions(m.fs.UV_aop)
     set_decarbonator_op_conditions(m.fs.decarbonator)
 
 
@@ -164,7 +164,7 @@ def initialize_wrd_system(m):
     # build_ro_inlet_stream(m.fs.ro_train, test=False)
     # initialize_ro_units(m.fs.ro_train)
     propagate_state(m.fs.s06)
-    initialize_UV_aop(m.fs.UV_aop)
+    initialize_uv_aop(m.fs.UV_aop)
     propagate_state(m.fs.s07)
     initialize_decarbonator(m.fs.decarbonator)
     propagate_state(m.fs.s08)
@@ -176,7 +176,7 @@ def set_wrd_system_scaling(m):
     set_chem_addition_scaling(blk=m.fs.hypochlorite_addition)
     add_UF_scaling(m.fs.UF)
     add_ro_scaling(m.fs.ro_train)
-    add_UV_scaling(m.fs.UV_aop)
+    add_uv_aop_scaling(m.fs.UV_aop)
     add_decarbonator_scaling(m.fs.decarbonator)
 
 def solve(model, solver=None, tee=True, raise_on_failure=True):
