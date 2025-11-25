@@ -52,11 +52,13 @@ def build_decarbonator(blk, prop_package):
     TransformationFactory("network.expand_arcs").apply_to(blk)
 
 
-def set_inlet_conditions(blk, Qin= .581, Cin = 0, P_in = 10.3):
+def set_inlet_conditions(blk, Qin=0.581, Cin=0, P_in=10.3):
     """
     Set the operation conditions for the decarbonator
     """
-    Qin = Qin * pyunits.m**3 / pyunits.s  # Feed flow rate in m3/s # 0.581 m3/s datapoint from 2/1/2021 0:01. approx. max flow
+    Qin = (
+        Qin * pyunits.m**3 / pyunits.s
+    )  # Feed flow rate in m3/s # 0.581 m3/s datapoint from 2/1/2021 0:01. approx. max flow
     Cin = Cin * pyunits.g / pyunits.L  # Feed concentration in g/L
     rho = 1000 * pyunits.kg / pyunits.m**3  # Approximate density of water
     feed_mass_flow_water = Qin * rho
@@ -100,12 +102,7 @@ def initialize_decarbonator(blk):
 
 
 def cost_decarbonator(blk):
-    lb = (
-        blk.unit.power_consumption.lb
-    )  # Not sure why this is here, but it was in pump costing method
-    blk.unit_model.work_mechanical.setlb(0)
     blk.costing_package.cost_flow(blk.unit.power_consumption, "electricity")
-    blk.unit.power_consumption.setlb(lb)
 
 
 def report_decarbonator(blk, w=30):
@@ -135,8 +132,10 @@ if __name__ == "__main__":
     print(f"{degrees_of_freedom(m)} degrees of freedom after build")
     add_decarbonator_scaling(m.fs.decarb_system)
     set_decarbonator_op_conditions(m.fs.decarb_system)
-    set_inlet_conditions(m.fs.decarb_system) # Calc_scaling_factors in this function
-    print(f"{degrees_of_freedom(m)} degrees of freedom after setting op and inlet conditions")
+    set_inlet_conditions(m.fs.decarb_system)  # Calc_scaling_factors in this function
+    print(
+        f"{degrees_of_freedom(m)} degrees of freedom after setting op and inlet conditions"
+    )
     initialize_decarbonator(m.fs.decarb_system)
     # cost_decarbonator(m.fs.decarb_system) # Haven't done any costing yet
     m.fs.obj = Objective(
