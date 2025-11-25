@@ -133,7 +133,7 @@ def cost_decarbonator(blk):
 
 
 def report_decarbonator(blk, w=30):
-    title = "Pump Report"
+    title = "Decarbonator Report"
     side = int(((3 * w) - len(title)) / 2) - 1
     header = "=" * side + f" {title} " + "=" * side
     print(f"\n{header}\n")
