@@ -52,12 +52,11 @@ def build_decarbonator(blk, prop_package):
     TransformationFactory("network.expand_arcs").apply_to(blk)
 
 
-# This function should have different default test values, but it doesn't do any thing really...
-def set_inlet_conditions(blk, Qin=0.5 * 0.154, Cin=2 * 0.542, P_in=10.6):
+def set_inlet_conditions(blk, Qin= .581, Cin = 0, P_in = 10.3):
     """
     Set the operation conditions for the decarbonator
     """
-    Qin = Qin * pyunits.m**3 / pyunits.s  # Feed flow rate in m3/s
+    Qin = Qin * pyunits.m**3 / pyunits.s  # Feed flow rate in m3/s # 0.581 m3/s datapoint from 2/1/2021 0:01. approx. max flow
     Cin = Cin * pyunits.g / pyunits.L  # Feed concentration in g/L
     rho = 1000 * pyunits.kg / pyunits.m**3  # Approximate density of water
     feed_mass_flow_water = Qin * rho
