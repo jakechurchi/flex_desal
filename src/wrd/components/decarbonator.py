@@ -1,45 +1,25 @@
-import pathlib
-import os
 from pyomo.environ import (
     ConcreteModel,
     value,
     TransformationFactory,
-    Param,
     Var,
-    Constraint,
-    Set,
-    Expression,
     Objective,
     NonNegativeReals,
-    Block,
-    RangeSet,
-    check_optimal_termination,
     assert_optimal_termination,
     units as pyunits,
 )
-from pyomo.network import Arc, SequentialDecomposition
-from pyomo.util.check_units import assert_units_consistent
-from pyomo.util.calc_var_value import calculate_variable_from_constraint as cvc
+from pyomo.network import Arc
 
 from idaes.core import FlowsheetBlock, UnitModelCostingBlock
 from idaes.core.util.initialization import propagate_state
 from idaes.core.util.scaling import (
-    constraint_scaling_transform,
     calculate_scaling_factors,
     set_scaling_factor,
 )
-from idaes.models.unit_models import Product, Feed, StateJunction, Separator
+from idaes.models.unit_models import StateJunction
 from idaes.core.util.model_statistics import *
 
 from watertap.core.solvers import get_solver
-from watertap.core import Database
-from watertap.unit_models.zero_order import ChemicalAdditionZO
-from watertap.core.wt_database import Database
-
-# from watertap.core.zero_order_properties import WaterParameterBlock
-from watertap.core.util.model_diagnostics.infeasible import *
-
-# from watertap.costing.zero_order_costing import ZeroOrderCosting
 from watertap.core.util.initialization import *
 from watertap.property_models.NaCl_T_dep_prop_pack import NaClParameterBlock
 
@@ -88,6 +68,15 @@ def set_inlet_conditions(blk, Qin=0.5 * 0.154, Cin=2 * 0.542, P_in=10.6):
     blk.feed.properties[0].temperature.fix(298.15 * pyunits.K)  # 25 C
     blk.feed.properties[0].pressure.fix(P_in * pyunits.bar)
     blk.feed.properties[0].flow_vol  # Touching
+
+    m = blk.model()
+    m.fs.ro_properties.set_default_scaling(
+        "flow_mass_phase_comp", 1e-1, index=("Liq", "H2O")
+    )
+    m.fs.ro_properties.set_default_scaling(
+        "flow_mass_phase_comp", 1e2, index=("Liq", "NaCl")
+    )
+    calculate_scaling_factors(m)
 
 
 def set_decarbonator_op_conditions(blk):
@@ -145,10 +134,10 @@ def report_decarbonator(blk, w=30):
 if __name__ == "__main__":
     m = build_system()  # optional input of stage_num
     print(f"{degrees_of_freedom(m)} degrees of freedom after build")
-    set_inlet_conditions(m.fs.decarb_system)
-    set_decarbonator_op_conditions(m.fs.decarb_system)
-    print(f"{degrees_of_freedom(m)} degrees of freedom after setting op conditions")
     add_decarbonator_scaling(m.fs.decarb_system)
+    set_decarbonator_op_conditions(m.fs.decarb_system)
+    set_inlet_conditions(m.fs.decarb_system) # Calc_scaling_factors in this function
+    print(f"{degrees_of_freedom(m)} degrees of freedom after setting op and inlet conditions")
     initialize_decarbonator(m.fs.decarb_system)
     # cost_decarbonator(m.fs.decarb_system) # Haven't done any costing yet
     m.fs.obj = Objective(
@@ -157,5 +146,4 @@ if __name__ == "__main__":
     solver = get_solver()
     results = solver.solve(m)
     assert_optimal_termination(results)
-    # print(f"{iscale.jacobian_cond(m.fs.decarb_system):.2e}")
     report_decarbonator(m.fs.decarb_system)
