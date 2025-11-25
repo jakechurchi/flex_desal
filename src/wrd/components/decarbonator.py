@@ -79,7 +79,6 @@ def set_inlet_conditions(blk, Qin=0.581, Cin=0, P_in=10.3):
     )
 
 
-
 def set_decarbonator_op_conditions(blk):
     # Instead of hard coding value, this could be in yaml config file
     blk.unit.power_consumption.fix(2.5 * pyunits.kW)
@@ -138,11 +137,12 @@ if __name__ == "__main__":
         f"{degrees_of_freedom(m)} degrees of freedom after setting op and inlet conditions"
     )
     initialize_decarbonator(m.fs.decarb_system)
-    # cost_decarbonator(m.fs.decarb_system) # Haven't done any costing yet
-    m.fs.obj = Objective(
-        expr=m.fs.decarb_system.feed.properties[0].flow_vol_phase["Liq"]
-    )  # There is no D.o.f to optimize with
-    solver = get_solver()
-    results = solver.solve(m)
-    assert_optimal_termination(results)
     report_decarbonator(m.fs.decarb_system)
+    # cost_decarbonator(m.fs.decarb_system) # Haven't done any costing yet
+    # m.fs.obj = Objective(
+    #     expr=m.fs.decarb_system.feed.properties[0].flow_vol_phase["Liq"]
+    # )  # There is no D.o.f to optimize with
+    # solver = get_solver()
+    # results = solver.solve(m)
+    # assert_optimal_termination(results)
+    
