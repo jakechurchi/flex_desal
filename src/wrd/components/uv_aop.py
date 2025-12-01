@@ -26,6 +26,7 @@ from watertap.property_models.NaCl_T_dep_prop_pack import NaClParameterBlock
 from watertap.core.util.model_diagnostics.infeasible import *
 from watertap.core.util.initialization import *
 
+
 def build_system(**kwargs):
     m = ConcreteModel()
     m.fs = FlowsheetBlock(dynamic=False)
@@ -46,9 +47,9 @@ def build_uv_aop(blk, prop_package):
         units=pyunits.kW,
         doc="Power consumption of UV_aop",
     )
-   
-    blk.feed_to_UV = Arc(source = blk.feed.inlet,destination= blk.unit.inlet)
-    blk.UV_to_product = Arc(source=blk.unit.outlet, destination = blk.product.inlet)
+
+    blk.feed_to_UV = Arc(source=blk.feed.inlet, destination=blk.unit.inlet)
+    blk.UV_to_product = Arc(source=blk.unit.outlet, destination=blk.product.inlet)
     TransformationFactory("network.expand_arcs").apply_to(blk)
 
 
@@ -62,27 +63,26 @@ def set_uv_aop_op_conditions(blk):
     b = 0 * pyunits.kW
 
     blk.unit.eq_power = Constraint(
-        expr = blk.unit.power_consumption == a*blk.feed.properties[0].flow_vol_phase['Liq'] + b,
-        doc = "Linear fit to data"
+        expr=blk.unit.power_consumption
+        == a * blk.feed.properties[0].flow_vol_phase["Liq"] + b,
+        doc="Linear fit to data",
     )
-    
 
-def set_inlet_conditions(blk, Qin= 0.27, Cin= 0, P_in = 10.6):
+
+def set_inlet_conditions(blk, Qin=0.27, Cin=0, P_in=10.6):
     """
-    Set the operation conditions for the UV. 
+    Set the operation conditions for the UV.
     """
-    Qin = (Qin) * pyunits.m**3 / pyunits.s  # Feed flow rate in m3/s # Flow into one UV unit, near max flow
+    Qin = (
+        (Qin) * pyunits.m**3 / pyunits.s
+    )  # Feed flow rate in m3/s # Flow into one UV unit, near max flow
     Cin = Cin * pyunits.g / pyunits.L  # Feed concentration in g/L
     rho = 1000 * pyunits.kg / pyunits.m**3  # Approximate density of water
     feed_mass_flow_water = Qin * rho
     feed_mass_flow_salt = Cin * Qin
 
-    blk.feed.properties[0].flow_mass_phase_comp["Liq", "H2O"].fix(
-        feed_mass_flow_water
-    )
-    blk.feed.properties[0].flow_mass_phase_comp["Liq", "NaCl"].fix(
-        feed_mass_flow_salt
-    )
+    blk.feed.properties[0].flow_mass_phase_comp["Liq", "H2O"].fix(feed_mass_flow_water)
+    blk.feed.properties[0].flow_mass_phase_comp["Liq", "NaCl"].fix(feed_mass_flow_salt)
     blk.feed.properties[0].temperature.fix(298.15 * pyunits.K)  # 25 C
     blk.feed.properties[0].pressure.fix(P_in * pyunits.bar)
     blk.feed.properties[0].flow_vol  # Touching
@@ -102,14 +102,17 @@ def initialize_uv_aop(blk):
     blk.unit.initialize()
     propagate_state(blk.UV_to_product)
     blk.product.initialize()
-  
+
+
 def add_uv_aop_scaling(blk):
-    set_scaling_factor(blk.unit.power_consumption,1e-3)
+    set_scaling_factor(blk.unit.power_consumption, 1e-3)
+
 
 def cost_uv_aop(blk):
     blk.costing_package.cost_flow(blk.unit.power_consumption, "electricity")
 
-def report_uv(blk,w=30):
+
+def report_uv(blk, w=30):
     title = "UV Report"
     side = int(((3 * w) - len(title)) / 2) - 1
     header = "=" * side + f" {title} " + "=" * side
@@ -129,6 +132,7 @@ def report_uv(blk,w=30):
     print(
         f'{f"Power Consumption (kW)":<{w}s}{value(pyunits.convert(power, to_units=pyunits.kW)):<{w}.3f}{"kW"}'
     )
+
 
 if __name__ == "__main__":
     m = build_system()
