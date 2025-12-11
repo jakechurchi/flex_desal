@@ -14,6 +14,13 @@ defaults:
   run:
     shell: bash -l {0}
 
+env:
+  # --color=yes needed for colorized output to be shown in GHA logs
+  # --pyargs watertap is needed to be able to define CLI options in watertap/conftest.py
+  PYTEST_ADDOPTS: "--color=yes"
+  PIP_PROGRESS_BAR: "on"
+#   WATERTAP_KERNEL_NAME: watertap-dev
+
 jobs:
 
   code-formatting:
@@ -54,6 +61,12 @@ jobs:
         run: |
           conda list
           pip list
+
+      - name: Install IDAES extensions
+        run: |
+          echo '::group::Installing IDAES extensions'
+          idaes get-extensions
+          echo '::endgroup::'
 
       - name: Run tests
         run: pytest -vv
