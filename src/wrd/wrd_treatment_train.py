@@ -119,10 +119,7 @@ def build_wrd_system(number_stages=3, **kwargs):
     m.fs.product = Product(property_package=m.fs.properties)
 
     # Combined chemical list for operating conditions, scaling, and costing(?)
-    m.fs.chemical_list = (
-        + list(m.fs.pre_treat_chem_list)
-        + list(m.fs.post_treat_chem_list)
-    )
+    m.fs.chemical_list = m.fs.pre_treat_chem_list + m.fs.post_treat_chem_list
     return m
 
 
