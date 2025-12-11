@@ -47,7 +47,7 @@ jobs:
         with:
           miniforge-version: latest
           activate-environment: flex_desal_analysis
-          environment-file: environment.yml
+          environment-file: flex_desal_analysis_setup.yml
 
       - name: Display installed packages
         run: |
