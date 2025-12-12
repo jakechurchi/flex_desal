@@ -16,15 +16,7 @@ from pyomo.contrib.parmest.experiment import Experiment
 from idaes.core.util.initialization import propagate_state
 from idaes.core.util.model_statistics import degrees_of_freedom
 from idaes.core import FlowsheetBlock
-from idaes.models.unit_models import (
-    MixingType,
-    MomentumMixingType,
-    Mixer,
-    Separator,
-    Product,
-    Feed,
-)
-
+from idaes.models.unit_models import Product, Feed
 from watertap.property_models.NaCl_T_dep_prop_pack import NaClParameterBlock
 from watertap.core.zero_order_properties import WaterParameterBlock
 
@@ -58,13 +50,13 @@ def build_wrd_system(number_stages=3, **kwargs):
     m.fs.feed = Feed(property_package=m.fs.properties)
 
     # Pre- UF Treatment chemical addition units (read from metadata)
-    m.fs.pre_UF_treat_chem_list = [
+    m.fs.pre_treat_chem_list = [
         "ammonium_sulfate",
         "sodium_hypochlorite",
         "sulfuric_acid",
         "scale_inhibitor",
     ]
-    for chem_name in m.fs.pre_UF_treat_chem_list:
+    for chem_name in m.fs.pre_treat_chem_list:
         m.fs.add_component(chem_name + "_addition", FlowsheetBlock(dynamic=False))
         build_chem_addition(
             m.fs.find_component(chem_name + "_addition"), chem_name, m.fs.properties
@@ -113,6 +105,7 @@ def build_wrd_system(number_stages=3, **kwargs):
         "calcium_hydroxide",
         "sodium_hydroxide",
         "sodium_hypochlorite_post",
+        "sodium_bisulfite",
     ]
 
     for chem_name in m.fs.post_treat_chem_list:
@@ -256,6 +249,7 @@ def set_wrd_inlet_conditions(m):
     m.fs.feed.properties[0].flow_mass_comp["tds"].fix(
         feed_mass_flow_salt
     )  # Fix feed salt flow rate
+    # Does not seem to like tss being 0
     m.fs.feed.properties[0].flow_mass_comp["tss"].fix(0)  # Fix feed salt flow rate
 
 
@@ -288,10 +282,7 @@ def initialize_wrd_system(m):
     init_UF(m.fs.UF)
 
     # propagate last pre-RO to translator
-    propagate_state(
-        m.fs.find_component(m.fs.pre_treat_chem_list[-1] + "_to_translator")
-    )
-
+    propagate_state(m.fs.UF_to_translator)
     m.fs.translator_ZO_to_RO.initialize()
     propagate_state(m.fs.translator_to_ro)
     initialize_ro_system(m.fs.ro_system)
