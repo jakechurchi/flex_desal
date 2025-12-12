@@ -21,22 +21,18 @@ feed_stream:
 pumps:
   number_trains: 4
   pump_1:
-    pump_efficiency: 0.45  # unitless
     pump_outlet_pressure: # Assuming the outlet pressure is the same for all pumps and equal to the inlet pressure of the ro 
       value: 35.4
       units: psi 
   pump_2:
-    pump_efficiency: 0.45  # unitless
     pump_outlet_pressure: 
       value: 35.4
       units: psi  
   pump_3:
-    pump_efficiency: 0.45 # unitless
     pump_outlet_pressure: 
       value: 35.4
       units: psi
   pump_4:
-    pump_efficiency: 0.45  # unitless
     pump_outlet_pressure: 
       value: 35.4
       units: psi
