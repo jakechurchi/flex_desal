@@ -58,7 +58,12 @@ def build_wrd_system(number_stages=3, **kwargs):
     m.fs.feed = Feed(property_package=m.fs.properties)
 
     # Pre- UF Treatment chemical addition units (read from metadata)
-    m.fs.pre_UF_treat_chem_list = ["ammonium_sulfate", "sodium_hypochlorite","sulfuric_acid", "scale_inhibitor"]
+    m.fs.pre_UF_treat_chem_list = [
+        "ammonium_sulfate",
+        "sodium_hypochlorite",
+        "sulfuric_acid",
+        "scale_inhibitor",
+    ]
     for chem_name in m.fs.pre_UF_treat_chem_list:
         m.fs.add_component(chem_name + "_addition", FlowsheetBlock(dynamic=False))
         build_chem_addition(
@@ -138,7 +143,7 @@ def add_wrd_connections(m):
             )
         else:
             # Connect each chemical to the next
-            prev = m.fs.pre_treat_chem_list[i-1]
+            prev = m.fs.pre_treat_chem_list[i - 1]
             m.fs.add_component(
                 f"{prev}_to_{chem_name}",
                 Arc(
@@ -158,11 +163,12 @@ def add_wrd_connections(m):
         ),
     )
 
-    # Connect UF Pump to UF 
-    
+    # Connect UF Pump to UF
+
     # UF to RO translator
     m.fs.UF_to_translator = Arc(
-        source=m.fs.UF.product.outlet, destination=m.fs.translator_ZO_to_RO.inlet)
+        source=m.fs.UF.product.outlet, destination=m.fs.translator_ZO_to_RO.inlet
+    )
 
     # Connect RO translator to RO
     m.fs.translator_to_ro = Arc(
