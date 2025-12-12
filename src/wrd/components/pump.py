@@ -186,9 +186,8 @@ def set_inlet_conditions(blk):
 
 
 def add_pump_scaling(blk):
-    # Properties
     set_scaling_factor(blk.pump.work_mechanical[0], 1e-3)
-    set_scaling_factor(blk.pump.efficiency_pump, 1e1)
+    
 
 
 def initialize_pump(blk):

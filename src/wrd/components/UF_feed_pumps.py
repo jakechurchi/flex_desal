@@ -63,27 +63,25 @@ from watertap.core import Database
 # 1. Unfix the variable energy_electric_flow_vol_inlet
 
 
-def build_system(split_fractions, config=None):
+def build_system(split_fractions):
     m = ConcreteModel()
     m.fs = FlowsheetBlock(dynamic=False)
     m.fs.properties = NaClParameterBlock()
     m.fs.UF_pumps = FlowsheetBlock(dynamic=False)
     build_UF_pumps(
-        m.fs.UF_pumps, m.fs.properties, split_fractions=split_fractions, config=config
+        m.fs.UF_pumps, m.fs.properties, split_fractions=split_fractions,
     )
     return m
 
 
-def build_UF_pumps(
-    blk, prop_package, number_trains=3, split_fractions=None, config=None,date="8_19_21"
-) -> None:
+def build_UF_pumps(blk, prop_package, split_fractions=None, date="8_19_21") -> None:
 
     # print(f'\n{"=======> BUILDING ULTRAFILTRATION SYSTEM <=======":^60}\n')
-
+    assert sum(split_fractions) == 1.0, "Split fractions must sum to 1.0"
     config_file_name = get_config_file("wrd_uf_pumps_inputs_" + date + ".yaml")
     blk.config_data = load_config(config_file_name)
-   
-    blk.number_trains = number_trains # Could be moved to config / yaml
+    number_trains = get_config_value(blk.config_data,"number_trains","pumps")
+    blk.number_trains = number_trains  # Could be moved to config / yaml
 
     m = blk.model()
     if prop_package is None:
@@ -191,7 +189,7 @@ def set_inlet_conditions(blk, Qin=None, Cin=None):
     blk.feed.properties[0].temperature.fix(298.15 * pyunits.K)  # 25 C
     blk.feed.properties[0].pressure.fix(Pin)
     # Touching volumetric flow variables for initialization
-    blk.feed.properties[0].flow_vol
+    blk.feed.properties[0].flow_vol_phase["Liq"]
 
     # Scaling defaults on the top-level property block (match pump behavior)
     m = blk.model()
@@ -213,46 +211,46 @@ def set_UF_pumps_op_conditions(blk):
                 blk.config_data, "pump_outlet_pressure", "pumps", f"pump_{i}"
             )
         )
-
         pump.efficiency_pump.fix(
             get_config_value(blk.config_data, "pump_efficiency", "pumps", f"pump_{i}")
         )
+        pump.control_volume.properties_in[0].flow_vol_phase["Liq"] # Touching this to print later
+
+
+def add_UF_pump_scaling(blk):
+    for i in range(1, blk.number_trains + 1):
+        pump = blk.find_component(f"pump_{i}")
+        set_scaling_factor(pump.work_mechanical[0], 1e-3)
+        
 
 
 def init_UF_pumps(blk, verbose=True, solver=None):
+    
     if solver is None:
         solver = get_solver()
-
+    # Why the optarg here? This approach is not used in any other component
     optarg = solver.options
-    print(
-        "\n\n-------------------- INITIALIZING ULTRAFILTRATION --------------------\n\n"
-    )
+    # print(
+    #     "\n\n-------------------- INITIALIZING ULTRAFILTRATION --------------------\n\n"
+    # )
 
-    print(f"UF Pumps Degrees of Freedom: {degrees_of_freedom(blk)}")
-    print("\n\n")
-
-    blk.feed_in.initialize(optarg=optarg)
-
+    blk.feed.initialize(optarg=optarg)
     propagate_state(blk.feed_to_feed_splitter)
 
     blk.feed_splitter.initialize()
 
     for i in range(1, blk.number_trains + 1):
 
-        splitter_out = blk.feed_splitter.find_component(f"pump_{i}_feed")
-
         # Propagate state to each pump
         pump = blk.find_component(f"pump_{i}")
         splitter_to_pump = blk.find_component(f"splitter_to_pump_{i}_connect")
         propagate_state(splitter_to_pump)
-
         pump.initialize()
-
         propagate_state(blk.find_component(f"pump_{i}_to_mixer_connect"))
         blk.pump_outlet_mixer.initialize()
-
-        propagate_state(blk.pump_mixer_to_feed_out)
-        blk.feed_out.initialize(optarg=optarg)
+        propagate_state(blk.pump_mixer_to_product)
+    
+    blk.product.initialize(optarg=optarg)
 
 
 def add_UF_pumps_costing(m, blk, costing_blk=None):
@@ -307,17 +305,21 @@ def report_UF_pumps(blk, w=30):
     for i in range(1, (blk.number_trains + 1)):
         pump = blk.find_component(f"pump_{i}")
         electricity = pyunits.convert(pump.work_mechanical[0], to_units=pyunits.kW)
+        flow = pump.control_volume.properties_in[0].flow_vol_phase["Liq"]
         print(
-            f"Pump {i} Work Mechanical: {value(electricity) :.2f} {pyunits.get_units(electricity)}"
-        )
+        f'{f" Pump {i} Work Mech. (kW)":<{w}s}{value(pyunits.convert(electricity, to_units=pyunits.kW)):<{w}.3f}{"kW"}'
+    )
+        print(
+        f'{f"Pump {i} Flow Rate (gpm)":<{w}s}{value(pyunits.convert(flow, to_units=pyunits.gallons / pyunits.minute)):<{w}.3f}{"gpm"}'
+    )
 
 
 if __name__ == "__main__":
-
     split_fractions = [
-        0.4,
-        0.4,
-        0.2,
+        0.25,
+        0.25,
+        0.25,
+        0.25,
     ]  # Based on ratio of pump capacity to total capacity
 
     m = build_system(split_fractions=split_fractions)
@@ -337,7 +339,7 @@ if __name__ == "__main__":
     # add_UF_pumps_costing(m, m.fs.UF_pumps)
     # m.fs.costing.cost_process()
     # m.fs.costing.initialize()
-    solve(m)
+    # solve(m)
  
     # Electricity consumption
     # m.fs.costing.aggregate_flow_electricity.display()
