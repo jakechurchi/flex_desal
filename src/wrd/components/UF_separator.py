@@ -185,7 +185,9 @@ def init_separator(blk, name=None):
 
     name = name.replace("_", " ").upper()
 
-    print(f'\n{f"=======> INITIALIZING {name} UNIT <=======":^60}\n') # Add this to other component files
+    print(
+        f'\n{f"=======> INITIALIZING {name} UNIT <=======":^60}\n'
+    )  # Add this to other component files
 
     blk.feed.initialize()
     propagate_state(blk.feed_to_unit)

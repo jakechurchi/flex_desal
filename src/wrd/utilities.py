@@ -3,6 +3,7 @@ import os
 from pyomo.environ import units as pyunits
 from idaes.models.unit_models import Mixer, Separator
 
+
 def load_config(config):
     with open(config, "r") as file:
         return yaml.safe_load(file)
@@ -80,6 +81,7 @@ def get_chem_list(yaml_name, section):
             chem_list.append(subsection)
         # chem_list.remove("default")
     return chem_list
+
 
 def touch_flow_and_conc(b):
     """

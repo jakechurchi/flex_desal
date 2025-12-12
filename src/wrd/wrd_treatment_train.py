@@ -31,7 +31,6 @@ from wrd.components.UF_separator import *
 from wrd.utilities import load_config, get_config_file, get_config_value
 
 
-
 def build_wrd_system(number_stages=3, **kwargs):
     m = ConcreteModel()
     m.fs = FlowsheetBlock(dynamic=False)
@@ -74,10 +73,12 @@ def build_wrd_system(number_stages=3, **kwargs):
 
     # UF Pumps
     m.fs.UF_pumps = FlowsheetBlock(dynamic=False)
-    build_UF_pumps(m.fs.UF_pumps, m.fs.ro_properties,split_fractions=[1]) #could move split_fractions in yaml?
+    build_UF_pumps(
+        m.fs.UF_pumps, m.fs.ro_properties, split_fractions=[1]
+    )  # could move split_fractions in yaml?
 
     # UF unit
-    m.fs.UF = FlowsheetBlock(dynamic=False)    
+    m.fs.UF = FlowsheetBlock(dynamic=False)
     # want to rename separator to UF
     build_separator(
         blk=m.fs.UF, prop_package=m.fs.ro_properties, outlet_list=["to_RO", "to_waste"]
@@ -128,7 +129,9 @@ def build_wrd_system(number_stages=3, **kwargs):
     )
 
     m.fs.product = Product(property_package=m.fs.properties)
-    m.fs.brine = Product(property_package=m.fs.ro_properties) # directly from ro, so needs same prop model
+    m.fs.brine = Product(
+        property_package=m.fs.ro_properties
+    )  # directly from ro, so needs same prop model
 
     return m
 
@@ -177,7 +180,7 @@ def add_wrd_connections(m):
     # Connect UF Pump to UF
     m.fs.uf_pumps_to_uf = Arc(
         source=m.fs.UF_pumps.product.outlet, destination=m.fs.UF.feed.inlet
-    )    
+    )
 
     # UF to RO system
     m.fs.UF_to_ro = Arc(
@@ -237,9 +240,9 @@ def add_wrd_connections(m):
 
     # Connect ro waste to brine
     m.fs.ro_waste_to_brine = Arc(
-            source=m.fs.ro_system.brine.outlet,
-            destination=m.fs.brine.inlet,
-        )
+        source=m.fs.ro_system.brine.outlet,
+        destination=m.fs.brine.inlet,
+    )
 
     TransformationFactory("network.expand_arcs").apply_to(m)
 
@@ -304,7 +307,7 @@ def set_wrd_system_scaling(m):
     # Does ZO property block also require scaling?
     for chem_name in m.fs.chemical_list:
         set_chem_addition_scaling(blk=m.fs.find_component(chem_name + "_addition"))
-    
+
     add_UF_pump_scaling(m.fs.UF_pumps)
     # add_separator_scaling(m.fs.UF) # Nothing to scale?
     add_ro_scaling(m.fs.ro_system)
@@ -325,11 +328,13 @@ def initialize_wrd_system(m):
         init_chem_addition(m.fs.find_component(chem_name + "_addition"))
 
     # propagate from last pre-UF chemical to UF
-    propagate_state(m.fs.find_component(m.fs.pre_treat_chem_list[-1] + "_to_translator"))
+    propagate_state(
+        m.fs.find_component(m.fs.pre_treat_chem_list[-1] + "_to_translator")
+    )
 
     # propagate last pre to translator
     m.fs.translator_ZO_to_RO.initialize()
-    propagate_state(m.fs.translator_to_uf_pumps)    
+    propagate_state(m.fs.translator_to_uf_pumps)
     # UF Pumps and separator
     init_UF_pumps(m.fs.UF_pumps)
     propagate_state(m.fs.uf_pumps_to_uf)
