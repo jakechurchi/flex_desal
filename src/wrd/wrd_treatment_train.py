@@ -20,15 +20,16 @@ from idaes.models.unit_models import Product, Feed
 from watertap.property_models.NaCl_T_dep_prop_pack import NaClParameterBlock
 from watertap.core.zero_order_properties import WaterParameterBlock
 
-from wrd.components.UF import *
 from wrd.components.chemical_addition import *
 from wrd.components.translator_ZO_to_NaCl import TranslatorZOtoNaCl
 from wrd.components.translator_NaCl_to_ZO import TranslatorNaCltoZO
 from wrd.components.ro_system import *
 from wrd.components.decarbonator import *
 from wrd.components.uv_aop import *
+from wrd.components.UF_feed_pumps import *
+from wrd.components.UF_separator import *
 from wrd.utilities import load_config, get_config_file, get_config_value
-from srp.components.generic_separator import *
+
 
 
 def build_wrd_system(number_stages=3, **kwargs):
@@ -63,19 +64,23 @@ def build_wrd_system(number_stages=3, **kwargs):
             m.fs.find_component(chem_name + "_addition"), chem_name, m.fs.properties
         )
 
-    # UF unit
-    m.fs.UF = FlowsheetBlock(dynamic=False)
-    # build_UF(m.fs.UF, m.fs.properties)
-    build_separator(
-        blk=m.fs.UF, prop_package=m.fs.ro_properties, outlet_list=["to_RO", "to_waste"]
-    )
-
-    # Translator block between ZO to RO property packages
+    # Translator block between ZO to RO property packages # may want to rename ro_properties because now it is most of the flowsheet, minus pre and post chem addition
     m.fs.translator_ZO_to_RO = TranslatorZOtoNaCl(
         inlet_property_package=m.fs.properties,
         outlet_property_package=m.fs.ro_properties,
         has_phase_equilibrium=False,
         outlet_state_defined=True,
+    )
+
+    # UF Pumps
+    m.fs.UF_pumps = FlowsheetBlock(dynamic=False)
+    build_UF_pumps(m.fs.UF_pumps, m.fs.ro_properties,split_fractions=[.25,.25,.25,.25])
+
+    # UF unit
+    m.fs.UF = FlowsheetBlock(dynamic=False)    
+    # want to rename separator to UF
+    build_separator(
+        blk=m.fs.UF, prop_package=m.fs.ro_properties, outlet_list=["to_RO", "to_waste"]
     )
 
     # RO unit
@@ -117,13 +122,14 @@ def build_wrd_system(number_stages=3, **kwargs):
         build_chem_addition(
             m.fs.find_component(chem_name + "_addition"), chem_name, m.fs.properties
         )
-
-    m.fs.product = Product(property_package=m.fs.properties)
-
     # Combined chemical list for operating conditions, scaling, and costing(?)
     m.fs.chemical_list = list(m.fs.pre_treat_chem_list) + list(
         m.fs.post_treat_chem_list
     )
+
+    m.fs.product = Product(property_package=m.fs.properties)
+    m.fs.brine = Product(property_package=m.fs.ro_properties) # directly from ro, so needs same prop model
+
     return m
 
 
@@ -153,7 +159,7 @@ def add_wrd_connections(m):
                 ),
             )
 
-    # Connect last pre treat chemical to UF_pump
+    # Connect last pre treat chemical to translator
     m.fs.add_component(
         f"{m.fs.pre_treat_chem_list[-1]}_to_translator",
         Arc(
@@ -164,13 +170,16 @@ def add_wrd_connections(m):
         ),
     )
 
-    # Connect RO translator to RO
-    m.fs.translator_to_uf = Arc(
-        source=m.fs.translator_ZO_to_RO.outlet, destination=m.fs.UF.feed.inlet
+    # Connect RO translator to uf pump
+    m.fs.translator_to_uf_pumps = Arc(
+        source=m.fs.translator_ZO_to_RO.outlet, destination=m.fs.UF_pumps.feed.inlet
     )
     # Connect UF Pump to UF
+    m.fs.uf_pumps_to_uf = Arc(
+        source=m.fs.UF_pumps.product.outlet, destination=m.fs.UF.feed.inlet
+    )    
 
-    # UF to RO translator
+    # UF to RO system
     m.fs.UF_to_ro = Arc(
         source=m.fs.UF.to_RO.outlet, destination=m.fs.ro_system.feed.inlet
     )
@@ -225,6 +234,13 @@ def add_wrd_connections(m):
             destination=m.fs.product.inlet,
         ),
     )
+
+    # Connect ro waste to brine
+    m.fs.ro_waste_to_brine = Arc(
+            source=m.fs.ro_system.brine.outlet,
+            destination=m.fs.brine.inlet,
+        )
+
     TransformationFactory("network.expand_arcs").apply_to(m)
 
 
@@ -257,7 +273,7 @@ def set_wrd_inlet_conditions(m):
         feed_mass_flow_salt
     )  # Fix feed salt flow rate
     # Does not seem to like tss being 0
-    m.fs.feed.properties[0].flow_mass_comp["tss"].fix(0)  # Fix feed salt flow rate
+    # m.fs.feed.properties[0].flow_mass_comp["tss"].fix(0)  # Fix feed salt flow rate
 
 
 def set_wrd_operating_conditions(m):
@@ -270,10 +286,30 @@ def set_wrd_operating_conditions(m):
     uf_splits = {
         "to_RO": {"H2O": 0.99, "NaCl": 0.99},
     }
+    set_UF_pumps_op_conditions(m.fs.UF_pumps)
     set_separator_op_conditions(m.fs.UF, split_fractions=uf_splits)
     set_ro_system_op_conditions(m.fs.ro_system)
     set_uv_aop_op_conditions(m.fs.UV_aop)
     set_decarbonator_op_conditions(m.fs.decarbonator)
+
+
+def set_wrd_system_scaling(m):
+    # Properties Scaling
+    m.fs.ro_properties.set_default_scaling(
+        "flow_mass_phase_comp", 1e-1, index=("Liq", "H2O")
+    )
+    m.fs.ro_properties.set_default_scaling(
+        "flow_mass_phase_comp", 1e2, index=("Liq", "NaCl")
+    )
+    # Does ZO property block also require scaling?
+    for chem_name in m.fs.chemical_list:
+        set_chem_addition_scaling(blk=m.fs.find_component(chem_name + "_addition"))
+    
+    add_UF_pump_scaling(m.fs.UF_pumps)
+    # add_separator_scaling(m.fs.UF) # Nothing to scale?
+    add_ro_scaling(m.fs.ro_system)
+    add_uv_aop_scaling(m.fs.UV_aop)
+    add_decarbonator_scaling(m.fs.decarbonator)
 
 
 def initialize_wrd_system(m):
@@ -289,23 +325,17 @@ def initialize_wrd_system(m):
         init_chem_addition(m.fs.find_component(chem_name + "_addition"))
 
     # propagate from last pre-UF chemical to UF
-    propagate_state(m.fs.find_component(m.fs.pre_treat_chem_list[-1] + "_to_UF"))
-    init_UF(m.fs.UF)
+    propagate_state(m.fs.find_component(m.fs.pre_treat_chem_list[-1] + "_to_translator"))
 
-    # propagate last pre-RO to translator
-    propagate_state(m.fs.UF_to_translator)
+    # propagate last pre to translator
     m.fs.translator_ZO_to_RO.initialize()
-    propagate_state(m.fs.translator_to_uf)
+    propagate_state(m.fs.translator_to_uf_pumps)    
+    # UF Pumps and separator
+    init_UF_pumps(m.fs.UF_pumps)
+    propagate_state(m.fs.uf_pumps_to_uf)
     init_separator(m.fs.UF)
+
     propagate_state(m.fs.UF_to_ro)
-
-    # propagate last pre-RO to translator
-    # propagate_state(
-    #     m.fs.find_component(m.fs.pre_treat_chem_list[-1] + "_to_translator")
-    # )
-
-    # m.fs.translator_ZO_to_RO.initialize()
-    # propagate_state(m.fs.translator_to_ro)
     initialize_ro_system(m.fs.ro_system)
     propagate_state(m.fs.ro_to_uv)
     initialize_uv_aop(m.fs.UV_aop)
@@ -323,24 +353,8 @@ def initialize_wrd_system(m):
 
     propagate_state(m.fs.find_component(m.fs.post_treat_chem_list[-1] + "_to_product"))
     m.fs.product.initialize()
-
-
-def set_wrd_system_scaling(m):
-    # Properties Scaling
-    m.fs.ro_properties.set_default_scaling(
-        "flow_mass_phase_comp", 1e-1, index=("Liq", "H2O")
-    )
-    m.fs.ro_properties.set_default_scaling(
-        "flow_mass_phase_comp", 1e2, index=("Liq", "NaCl")
-    )
-    # Does ZO property block also require scaling?
-    for chem_name in m.fs.chemical_list:
-        set_chem_addition_scaling(blk=m.fs.find_component(chem_name + "_addition"))
-
-    # add_UF_scaling(m.fs.UF)
-    add_ro_scaling(m.fs.ro_system)
-    add_uv_aop_scaling(m.fs.UV_aop)
-    add_decarbonator_scaling(m.fs.decarbonator)
+    propagate_state(m.fs.ro_waste_to_brine)
+    m.fs.brine.initialize()
 
 
 def solve(model, solver=None, tee=True, raise_on_failure=True):
@@ -366,9 +380,12 @@ def solve(model, solver=None, tee=True, raise_on_failure=True):
 
 def main(number_stages=3, date="8_19_21"):
     m = build_wrd_system(number_stages=number_stages, date=date)
+    assert_units_consistent(m)
     add_wrd_connections(m)
+    print(f"{degrees_of_freedom(m)} degrees of freedom after build")
     set_wrd_inlet_conditions(m)
     set_wrd_operating_conditions(m)
+    print(f"{degrees_of_freedom(m)} degrees of freedom after setting op conditions")
     set_wrd_system_scaling(m)
     calculate_scaling_factors(m)
     initialize_wrd_system(m)
@@ -377,6 +394,7 @@ def main(number_stages=3, date="8_19_21"):
         assert_optimal_termination(results)
     except:
         print_infeasible_constraints(m)
+        print("\n--------- Failed to Solve ---------\n")
     return m
 
 
