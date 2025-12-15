@@ -68,7 +68,7 @@ def build_wrd_pump(blk, stage_num=1, date="8_19_21", prop_package=None):
         a_1 = 21.112
         a_2 = -133.157
         a_3 = -234.386
-    else: # Missing these pump curves, so this is wrong
+    else:  # Missing these pump curves, so this is wrong
         a_0 = 0.4
         a_1 = 0
         a_2 = 0

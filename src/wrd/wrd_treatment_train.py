@@ -42,7 +42,7 @@ def build_wrd_system(number_stages=3, **kwargs):
     m.fs.config_data = load_config(config_file_name)
 
     # ZO Properties
-    m.fs.properties = WaterParameterBlock(solute_list=["tds","tss"])
+    m.fs.properties = WaterParameterBlock(solute_list=["tds", "tss"])
     # RO properties
     m.fs.ro_properties = NaClParameterBlock()
 
@@ -348,7 +348,7 @@ def initialize_wrd_system(m):
     propagate_state(m.fs.uv_to_decarbonator)
     initialize_decarbonator(m.fs.decarbonator)
     propagate_state(m.fs.decarbonator_to_translator)
-    m.fs.translator_RO_to_ZO.initialize() # Permeate pressure drops out
+    m.fs.translator_RO_to_ZO.initialize()  # Permeate pressure drops out
 
     # Initialize post-treatment chemical chain (downstream of decarbonator)
     for i, chem_name in enumerate(m.fs.post_treat_chem_list):
@@ -361,7 +361,6 @@ def initialize_wrd_system(m):
 
     propagate_state(m.fs.find_component(m.fs.post_treat_chem_list[-1] + "_to_product"))
     m.fs.product.initialize()
-
 
 
 def solve(model, solver=None, tee=True, raise_on_failure=True):

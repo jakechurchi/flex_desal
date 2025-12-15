@@ -553,7 +553,11 @@ def report_ro_system(blk, w=30):
             stage_rr = train.find_component(f"ro_stage_{s}").recovery_vol_phase[
                 0, "Liq"
             ]
-            stage_perm = train.find_component(f"ro_stage_{s}").mixed_permeate[0].flow_vol_phase["Liq"]
+            stage_perm = (
+                train.find_component(f"ro_stage_{s}")
+                .mixed_permeate[0]
+                .flow_vol_phase["Liq"]
+            )
             rho = 1000 * pyunits.kg / pyunits.m**3  # Approximate density of water
             perm_sal = (
                 train.find_component(f"ro_stage_{s}").permeate.flow_mass_phase_comp[
@@ -567,7 +571,9 @@ def report_ro_system(blk, w=30):
             perm_flows_gpm[f"train_{t}_stage_{s}"] = value(
                 pyunits.convert(stage_perm, to_units=pyunits.gallons / pyunits.minute)
             )
-            perm_pressure = train.find_component(f"ro_stage_{s}").mixed_permeate[0].pressure
+            perm_pressure = (
+                train.find_component(f"ro_stage_{s}").mixed_permeate[0].pressure
+            )
             print(f"\n{header}\n")
             print(
                 f'{f"Stage {s} Flow In (MGD)":<{w}s}{value(pyunits.convert(pump.product.properties[0].flow_vol_phase["Liq"], to_units=pyunits.Mgallons / pyunits.day)):<{w}.3f}{"MGD"}'

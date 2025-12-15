@@ -51,7 +51,7 @@ def test_pump_PRO_S1_3_13():
 
 @pytest.mark.component
 def test_pump_PRO_S2_3_13():
-    expected_power = 22.8 * pyunits.kW 
+    expected_power = 22.8 * pyunits.kW
     m = main(stage_num=2, date="3_13_21")
     power = pyunits.convert(
         m.fs.pump_system.pump.work_mechanical[0], to_units=pyunits.kW
