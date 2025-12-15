@@ -24,7 +24,17 @@ from idaes.core.util.scaling import (
 from watertap.property_models.NaCl_prop_pack import NaClParameterBlock
 from watertap.unit_models.pressure_changer import Pump
 from watertap.core.solvers import get_solver
+
 from wrd.utilities import load_config, get_config_value, get_config_file
+from srp.utils import touch_flow_and_conc
+
+__all__ = [
+    "build_pump",
+    "initialize_pump",
+    "set_pump_op_conditions",
+    "report_pump",
+    "add_pump_scaling",
+]
 
 
 def build_system(**kwargs):
@@ -32,25 +42,26 @@ def build_system(**kwargs):
     m.fs = FlowsheetBlock(dynamic=False)
     m.fs.ro_properties = NaClParameterBlock()
     m.fs.pump_system = FlowsheetBlock(dynamic=False)
-    build_wrd_pump(m.fs.pump_system, prop_package=m.fs.ro_properties, **kwargs)
+    build_pump(m.fs.pump_system, prop_package=m.fs.ro_properties, **kwargs)
     return m
 
 
-def build_wrd_pump(blk, stage_num=1, date="8_19_21", prop_package=None):
-    m = blk.model()
+def build_pump(blk, stage_num=1, file="wrd_ro_inputs_8_19_21.yaml", prop_package=None):
     if prop_package is None:
+        m = blk.model()
         prop_package = m.fs.ro_properties
 
     blk.feed = StateJunction(property_package=prop_package)
+    touch_flow_and_conc(blk.feed)
     blk.product = StateJunction(property_package=prop_package)
-    config_file_name = get_config_file("wrd_ro_inputs_" + date + ".yaml")
+    config_file_name = get_config_file(file)
     blk.config_data = load_config(config_file_name)
     blk.stage_num = stage_num
 
-    blk.pump = Pump(property_package=prop_package)
+    blk.unit = Pump(property_package=prop_package)
 
     # Create variable for the efficiency from the pump curves
-    blk.pump.efficiency_fluid = Var(
+    blk.unit.efficiency_fluid = Var(
         initialize=0.7,
         units=pyunits.dimensionless,
         bounds=(0, 1),
@@ -68,35 +79,35 @@ def build_wrd_pump(blk, stage_num=1, date="8_19_21", prop_package=None):
         a_1 = 21.112
         a_2 = -133.157
         a_3 = -234.386
-    else:  # Missing these pump curves, so this is wrong
-        a_0 = 0.4
-        a_1 = 0
-        a_2 = 0
-        a_3 = 0
+    else:
+        a_0 = 0.067
+        a_1 = 21.112
+        a_2 = -133.157
+        a_3 = -234.386
 
     # Create Variables for simple "surrogate"
-    blk.pump.efficiency_eq_constant = Param(
+    blk.unit.efficiency_eq_constant = Param(
         initialize=a_0,
         mutable=True,
         units=pyunits.dimensionless,
         doc="Constant term of Efficiency equation",
     )
 
-    blk.pump.efficiency_eq_linear = Param(
+    blk.unit.efficiency_eq_linear = Param(
         initialize=a_1,
         mutable=True,
         units=(pyunits.m**3 / pyunits.s) ** -1,
         doc="Linear term of Efficiency equation",
     )
 
-    blk.pump.efficiency_eq_squared = Param(
+    blk.unit.efficiency_eq_squared = Param(
         initialize=a_2,
         mutable=True,
         units=(pyunits.m**3 / pyunits.s) ** -2,
         doc="Squared term of Efficiency equation",
     )
 
-    blk.pump.efficiency_eq_cubed = Param(
+    blk.unit.efficiency_eq_cubed = Param(
         initialize=a_3,
         mutable=True,
         units=(pyunits.m**3 / pyunits.s) ** -3,
@@ -105,40 +116,40 @@ def build_wrd_pump(blk, stage_num=1, date="8_19_21", prop_package=None):
 
     flow = blk.feed.properties[0].flow_vol_phase["Liq"]
 
-    blk.pump.efficiency_surr_eq = Constraint(
-        expr=blk.pump.efficiency_fluid
-        == blk.pump.efficiency_eq_cubed * flow**3
-        + blk.pump.efficiency_eq_squared * flow**2
-        + blk.pump.efficiency_eq_linear * flow
-        + blk.pump.efficiency_eq_constant,
+    blk.unit.efficiency_surr_eq = Constraint(
+        expr=blk.unit.efficiency_fluid
+        == blk.unit.efficiency_eq_cubed * flow**3
+        + blk.unit.efficiency_eq_squared * flow**2
+        + blk.unit.efficiency_eq_linear * flow
+        + blk.unit.efficiency_eq_constant,
         doc="Efficiency surrogate equation",
     )
-    blk.pump.efficiency_pump.bounds = (0, 1)
+    blk.unit.efficiency_pump.bounds = (0, 1)
 
-    blk.pump.efficiency_motor = Param(
+    blk.unit.efficiency_motor = Param(
         initialize=0.938,
         mutable=True,
         units=pyunits.dimensionless,
         doc="Efficiency of motor and VFD",
     )
 
-    blk.pump.efficiency_vfd = Param(
+    blk.unit.efficiency_vfd = Param(
         initialize=0.95,
         mutable=True,
         units=pyunits.dimensionless,
         doc="Efficiency of VFD",
     )
 
-    blk.pump.efficiency_electrical = Constraint(
-        expr=blk.pump.efficiency_pump[0]
-        == blk.pump.efficiency_motor
-        * blk.pump.efficiency_vfd
-        * blk.pump.efficiency_fluid
+    blk.unit.efficiency_electrical = Constraint(
+        expr=blk.unit.efficiency_pump[0]
+        == blk.unit.efficiency_motor
+        * blk.unit.efficiency_vfd
+        * blk.unit.efficiency_fluid
     )
 
     # Add Arcs
-    blk.feed_to_unit = Arc(source=blk.feed.outlet, destination=blk.pump.inlet)
-    blk.unit_to_product = Arc(source=blk.pump.outlet, destination=blk.product.inlet)
+    blk.feed_to_unit = Arc(source=blk.feed.outlet, destination=blk.unit.inlet)
+    blk.unit_to_product = Arc(source=blk.unit.outlet, destination=blk.product.inlet)
     TransformationFactory("network.expand_arcs").apply_to(blk)
 
 
@@ -146,7 +157,9 @@ def set_pump_op_conditions(blk):
     Pout = get_config_value(
         blk.config_data, "pump_outlet_pressure", "pumps", f"pump_{blk.stage_num}"
     )
-    blk.pump.control_volume.properties_out[0].pressure.fix(Pout)
+
+    print(f"Setting pump {blk.stage_num} operating conditions, Pout={Pout}")
+    blk.unit.control_volume.properties_out[0].pressure.fix(Pout)
 
 
 def set_inlet_conditions(blk):
@@ -182,7 +195,7 @@ def set_inlet_conditions(blk):
     blk.feed.properties[0].temperature.fix(298.15 * pyunits.K)  # 25 C
     blk.feed.properties[0].pressure.fix(Pin)
     # blk.feed.properties[0].flow_vol  # Touching
-    blk.pump.control_volume.properties_in[0].flow_vol  # Touching
+    blk.unit.control_volume.properties_in[0].flow_vol  # Touching
 
     # Scaling properties
     m = blk.model()
@@ -195,7 +208,7 @@ def set_inlet_conditions(blk):
 
 
 def add_pump_scaling(blk):
-    set_scaling_factor(blk.pump.work_mechanical[0], 1e-3)
+    set_scaling_factor(blk.unit.work_mechanical[0], 1e-3)
 
 
 def initialize_pump(blk):
@@ -206,7 +219,7 @@ def initialize_pump(blk):
     blk.feed.initialize()
     propagate_state(blk.feed_to_unit)
 
-    blk.pump.initialize()
+    blk.unit.initialize()
     propagate_state(blk.unit_to_product)
     blk.product.initialize()
 
@@ -219,25 +232,24 @@ def report_pump(blk, w=30):
     print(f'{"Parameter":<{w}s}{"Value":<{w}s}{"Units":<{w}s}')
     print(f"{'-' * (3 * w)}")
 
-    total_flow = blk.pump.control_volume.properties_in[0].flow_vol_phase["Liq"]
-    deltaP = blk.pump.deltaP[0]
-    work = blk.pump.work_mechanical[0]
+    flow_in = blk.feed.properties[0].flow_vol_phase["Liq"]
+    deltaP = blk.unit.deltaP[0]
+    work = blk.unit.work_mechanical[0]
     print(
-        f'{f"Total Flow Rate (MGD)":<{w}s}{value(pyunits.convert(total_flow, to_units=pyunits.Mgallons /pyunits.day)):<{w}.3f}{"MGD"}'
+        f'{f"Total Flow Rate (MGD)":<{w}s}{value(pyunits.convert(flow_in, to_units=pyunits.Mgallons /pyunits.day)):<{w}.3f}{"MGD"}'
     )
-    print(f'{f"Total Flow Rate (m3/s)":<{w}s}{value(total_flow):<{w}.3e}{"m3/s"}')
-    print(
-        f'{f"Total Flow Rate (gpm)":<{w}s}{value(pyunits.convert(total_flow, to_units=pyunits.gallons / pyunits.minute)):<{w}.3f}{"gpm"}'
-    )
+    # print(f'{f"Total Flow Rate (m3/s)":<{w}s}{value(flow_in):<{w}.3e}{"m3/s"}')
+    # print(
+    #     f'{f"Total Flow Rate (gpm)":<{w}s}{value(pyunits.convert(flow_in, to_units=pyunits.gallons / pyunits.minute)):<{w}.3f}{"gpm"}'
+    # )
     print(f'{f"Pressure Change (Pa)":<{w}s}{value(deltaP):<{w}.3e}{"Pa"}')
     print(
-        f'{f"Pressure Change (bar)":<{w}s}{value(pyunits.convert(deltaP,to_units=pyunits.bar)):<{w}.3e}{"bar"}'
+        f'{f"Pressure Change (bar)":<{w}s}{value(pyunits.convert(deltaP, to_units=pyunits.bar)):<{w}.3e}{"bar"}'
     )
-    print(f'{f"Work Mech. (J)":<{w}s}{value(work):<{w}.3e}{"Joules"}')
     print(
         f'{f"Work Mech. (kW)":<{w}s}{value(pyunits.convert(work, to_units=pyunits.kW)):<{w}.3f}{"kW"}'
     )
-    print(f'{f"Efficiency (-)":<{w}s}{value(blk.pump.efficiency_pump[0]):<{w}.3f}{"-"}')
+    print(f'{f"Efficiency (-)":<{w}s}{value(blk.unit.efficiency_pump[0]):<{w}.3f}{"-"}')
 
 
 def main(stage_num=1, date="8_19_21"):
