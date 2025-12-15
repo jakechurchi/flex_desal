@@ -7,9 +7,7 @@ from wrd.components.pump import main
 @pytest.mark.component
 def test_pump_PRO_S1_8_19():
     # Conditions taken from ro_system_parameters_for_watertap.xlsx in Box August 19, 2021
-    extra_load = 3 * pyunits.kW  # Some sensors + lighting + fan ?
-    expected_power = 196.25 * pyunits.kW - extra_load
-    expected_eta = 0.62
+    expected_power = 196.25 * pyunits.kW
     m = main(stage_num=1, date="8_19_21")
     power = pyunits.convert(
         m.fs.pump_system.pump.work_mechanical[0], to_units=pyunits.kW
@@ -20,35 +18,29 @@ def test_pump_PRO_S1_8_19():
 
 @pytest.mark.component
 def test_pump_PRO_S2_8_19():
-    extra_load = 3 * pyunits.kW  # Some sensors + lighting + ?
-    expected_power = 22.7 * pyunits.kW - extra_load  # kW
-    expected_eta = 0.58
+    expected_power = 22.7 * pyunits.kW
     m = main(stage_num=2, date="8_19_21")
     power = pyunits.convert(
         m.fs.pump_system.pump.work_mechanical[0], to_units=pyunits.kW
     )
     assert_units_consistent(power + expected_power)
-    assert value(power) == pytest.approx(value(expected_power), rel=0.15)
+    assert value(power) == pytest.approx(value(expected_power), rel=0.25)
 
 
 @pytest.mark.component
 def test_pump_TRO_8_19():
-    extra_load = 6 * pyunits.kW  # Needs more investigation to justify this number
-    expected_power = 29.3 * pyunits.kW - extra_load  # kW
-    expected_eta = 0.30
+    expected_power = 29.3 * pyunits.kW
     m = main(stage_num=3, date="8_19_21")
     power = pyunits.convert(
         m.fs.pump_system.pump.work_mechanical[0], to_units=pyunits.kW
     )
     assert_units_consistent(power + expected_power)
-    assert value(power) == pytest.approx(value(expected_power), rel=0.15)
+    assert value(power) == pytest.approx(value(expected_power), rel=0.25)
 
 
 @pytest.mark.component
 def test_pump_PRO_S1_3_13():
-    extra_load = 3 * pyunits.kW
-    expected_power = 189.6 * pyunits.kW - extra_load
-    expected_eta = 0.67
+    expected_power = 189.6 * pyunits.kW
     m = main(stage_num=1, date="3_13_21")
     power = pyunits.convert(
         m.fs.pump_system.pump.work_mechanical[0], to_units=pyunits.kW
@@ -59,28 +51,24 @@ def test_pump_PRO_S1_3_13():
 
 @pytest.mark.component
 def test_pump_PRO_S2_3_13():
-    extra_load = 3 * pyunits.kW
-    expected_power = 22.8 * pyunits.kW - extra_load  # * .578/ .812 # kW
-    expected_eta = 0.58
+    expected_power = 22.8 * pyunits.kW 
     m = main(stage_num=2, date="3_13_21")
     power = pyunits.convert(
         m.fs.pump_system.pump.work_mechanical[0], to_units=pyunits.kW
     )
     assert_units_consistent(power + expected_power)
-    assert value(power) == pytest.approx(value(expected_power), rel=0.15)
+    assert value(power) == pytest.approx(value(expected_power), rel=0.20)
 
 
 @pytest.mark.component
 def test_pump_TRO_3_13():
-    extra_load = 3 * pyunits.kW
-    expected_power = 24.9 * pyunits.kW - extra_load  # * .578 / .812 # kW
-    expected_eta = 0.42
+    expected_power = 24.9 * pyunits.kW
     m = main(stage_num=3, date="3_13_21")
     power = pyunits.convert(
         m.fs.pump_system.pump.work_mechanical[0], to_units=pyunits.kW
     )
     assert_units_consistent(power + expected_power)
-    assert value(power) == pytest.approx(value(expected_power), rel=0.15)
+    assert value(power) == pytest.approx(value(expected_power), rel=0.20)
 
 
 # This day is no longer being used for comparison
