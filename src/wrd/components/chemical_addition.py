@@ -158,7 +158,7 @@ def add_chem_addition_costing(blk, flowsheet_costing_block=None, cost_capital=Fa
 
     blk.unit.costing = UnitModelCostingBlock(
         flowsheet_costing_block=flowsheet_costing_block,
-        costing_method_arguments={"cost_capital": cost_capital}
+        costing_method_arguments={"cost_capital": cost_capital},
     )
 
 
