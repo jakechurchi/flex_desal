@@ -343,6 +343,9 @@ def report_ro(blk, w=30):
         f'{f"Inlet Flow":<{w}s}{value(pyunits.convert(blk.feed.properties[0].flow_vol_phase["Liq"], to_units=pyunits.gallon / pyunits.minute)):<{w}.3f}{"gpm"}'
     )
     print(
+        f'{f"Inlet Conc.":<{w}s}{value(pyunits.convert(blk.feed.properties[0].conc_mass_phase_comp["Liq", "NaCl"], to_units=pyunits.mg / pyunits.liter)):<{w}.3f}{"mg/L"}'
+    )
+    print(
         f'{f"Brine Flow":<{w}s}{value(pyunits.convert(blk.disposal.properties[0].flow_vol_phase["Liq"], to_units=pyunits.gallon / pyunits.minute)):<{w}.3f}{"gpm"}'
     )
     print(
