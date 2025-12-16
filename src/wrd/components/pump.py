@@ -32,11 +32,11 @@ def build_system(**kwargs):
     m.fs = FlowsheetBlock(dynamic=False)
     m.fs.ro_properties = NaClParameterBlock()
     m.fs.pump_system = FlowsheetBlock(dynamic=False)
-    build_wrd_pump(m.fs.pump_system, prop_package=m.fs.ro_properties, **kwargs)
+    build_pump(m.fs.pump_system, prop_package=m.fs.ro_properties, **kwargs)
     return m
 
 
-def build_wrd_pump(blk, stage_num=1, date="8_19_21", prop_package=None):
+def build_pump(blk, stage_num=1, date="8_19_21", prop_package=None):
     m = blk.model()
     if prop_package is None:
         prop_package = m.fs.ro_properties

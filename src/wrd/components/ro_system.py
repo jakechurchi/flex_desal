@@ -39,7 +39,7 @@ from watertap.core.solvers import get_solver
 
 
 from wrd.components.pump import (
-    build_wrd_pump,
+    build_pump,
     initialize_pump,
     set_pump_op_conditions,
     add_pump_scaling,
@@ -207,7 +207,7 @@ def build_ro_train(blk, prop_package=None):
             blk.stage_3_head_loss = HeadLoss(property_package=prop_package)
 
         blk.add_component(f"pump{i}", FlowsheetBlock(dynamic=False))
-        build_wrd_pump(
+        build_pump(
             blk.find_component(f"pump{i}"), stage_num=i, prop_package=prop_package
         )
         blk.train_power_consumption += pyunits.convert(
