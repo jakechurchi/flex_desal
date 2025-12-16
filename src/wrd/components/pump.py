@@ -243,14 +243,22 @@ def report_pump(blk, w=30):
     print(f"{'-' * (3 * w)}")
 
     flow_in = blk.feed.properties[0].flow_vol_phase["Liq"]
-    deltaP = blk.unit.deltaP[0]
     work = blk.unit.work_mechanical[0]
+    pin = blk.unit.control_volume.properties_in[0].pressure
+    deltaP = blk.unit.deltaP[0]
+    pout = blk.unit.control_volume.properties_out[0].pressure
     print(
         f'{f"Inlet Flow":<{w}s}{value(pyunits.convert(flow_in, to_units=pyunits.gallons /pyunits.minute)):<{w}.3f}{"gpm"}'
     )
-    print(f'{f"∆P (Pa)":<{w}s}{value(deltaP):<{w}.3e}{"Pa"}')
+    # print(f'{f"∆P (Pa)":<{w}s}{value(deltaP):<{w}.3e}{"Pa"}')
     print(
-        f'{f"∆P (psi)":<{w}s}{value(pyunits.convert(deltaP, to_units=pyunits.psi)):<{w}.3f}{"psi"}'
+        f'{f"Inlet Pressure":<{w}s}{value(pyunits.convert(pin, to_units=pyunits.psi)):<{w}.3f}{"psi"}'
+    )
+    print(
+        f'{f"∆P":<{w}s}{value(pyunits.convert(deltaP, to_units=pyunits.psi)):<{w}.3f}{"psi"}'
+    )
+    print(
+        f'{f"Outlet Pressure":<{w}s}{value(pyunits.convert(pout, to_units=pyunits.psi)):<{w}.3f}{"psi"}'
     )
     print(
         f'{f"Work Mech. (kW)":<{w}s}{value(pyunits.convert(work, to_units=pyunits.kW)):<{w}.3f}{"kW"}'
@@ -259,6 +267,7 @@ def report_pump(blk, w=30):
 
 
 def main(stage_num=1, date="8_19_21"):
+
     m = build_system(stage_num=stage_num, date=date)  # optional input of stage_num
     set_inlet_conditions(m.fs.pump_system)
     set_pump_op_conditions(m.fs.pump_system)
