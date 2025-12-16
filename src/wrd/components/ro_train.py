@@ -39,6 +39,7 @@ __all__ = [
     "set_ro_train_scaling",
     "initialize_ro_train",
     "report_ro_train",
+    "add_ro_train_costing",
 ]
 
 solver = get_solver()
