@@ -40,7 +40,7 @@ feed > pump > RO > product
 """
 
 
-def build_system():
+def build_system(stage_num=1, file="wrd_ro_inputs_8_19_21.yaml"):
 
     m = ConcreteModel()
     m.fs = FlowsheetBlock(dynamic=False)
@@ -50,7 +50,9 @@ def build_system():
     touch_flow_and_conc(m.fs.feed)
 
     m.fs.ro_stage = FlowsheetBlock(dynamic=False)
-    build_ro_stage(m.fs.ro_stage, prop_package=m.fs.properties)
+    build_ro_stage(
+        m.fs.ro_stage, stage_num=stage_num, file=file, prop_package=m.fs.properties
+    )
 
     m.fs.product = Product(property_package=m.fs.properties)
     m.fs.brine = Product(property_package=m.fs.properties)
@@ -77,24 +79,14 @@ def build_system():
     return m
 
 
-def set_inlet_conditions(
-    m, Qin=2637, Cin=0.5, Pin=3e5, file="wrd_ro_inputs_8_19_21.yaml"
-):
-
-    config_data = load_config(get_config_file(file))
-
-    temp = get_config_value(
-        config_data,
-        "feed_temperature",
-        "feed_stream",
-    )
+def set_inlet_conditions(m, Qin=2637, Cin=0.5, Tin=298, Pin=101325):
 
     m.fs.feed.properties.calculate_state(
         var_args={
             ("flow_vol_phase", ("Liq")): Qin * pyunits.gallons / pyunits.minute,
             ("conc_mass_phase_comp", ("Liq", "NaCl")): Cin * pyunits.g / pyunits.L,
-            ("pressure", None): 101325,
-            ("temperature", None): temp,
+            ("pressure", None): Pin,
+            ("temperature", None): Tin,
         },
         hold_state=True,
     )
@@ -107,6 +99,7 @@ def set_ro_stage_op_conditions(blk):
 
 
 def set_ro_stage_scaling(blk):
+
     add_pump_scaling(blk.pump)
     set_ro_scaling(blk.ro)
 
@@ -183,20 +176,89 @@ def report_ro_stage(blk, w=30):
     report_ro(blk.ro, w=w)
 
 
-def main():
+def main(
+    Qin=2637,
+    Cin=0.528,
+    Tin=302,
+    Pin=101325,
+    stage_num=1,
+    file="wrd_ro_inputs_8_19_21.yaml",
+):
 
-    m = build_system()
+    m = build_system(stage_num=stage_num, file=file)
     set_ro_stage_scaling(m.fs.ro_stage)
     calculate_scaling_factors(m)
-    set_inlet_conditions(m)
+    set_inlet_conditions(m, Qin=Qin, Cin=Cin, Tin=Tin, Pin=Pin)
     set_ro_stage_op_conditions(m.fs.ro_stage)
 
     initialize_system(m)
-    results = solver.solve(m, tee=True)
+
+    assert degrees_of_freedom(m) == 0
+    results = solver.solve(m)
     assert_optimal_termination(results)
     report_ro_stage(m.fs.ro_stage)
+
     return m
 
 
 if __name__ == "__main__":
+
+    # August 19, 2021 Data
+    # Stage 1
     m = main()
+    # Stage 2
+    m = main(
+        Qin=1029,
+        Cin=1.2479,
+        Tin=302,
+        Pin=131.2 * pyunits.psi,
+        stage_num=2,
+        file="wrd_ro_inputs_8_19_21.yaml",
+    )
+    # Stage 3
+    m = main(
+        Qin=384,
+        Cin=4.847 / 2,
+        Tin=302,
+        Pin=(112.6 - 41.9) * pyunits.psi,
+        stage_num=3,
+        file="wrd_ro_inputs_8_19_21.yaml",
+    )
+
+    # March 13, 2021 Data
+    # Stage 1
+    m = main(
+        Qin=2452,
+        Cin=0.503,
+        Tin=295,
+        Pin=101325,
+        stage_num=1,
+        file="wrd_ro_inputs_3_13_21.yaml",
+    )
+    # Stage 2
+    m = main(
+        Qin=1047,
+        Cin=2.239 / 2,
+        Tin=295,
+        Pin=143.5 * pyunits.psi,
+        stage_num=2,
+        file="wrd_ro_inputs_3_13_21.yaml",
+    )
+    # Stage 3
+    m = main(
+        Qin=506.5,
+        Cin=2.2,
+        Tin=295,
+        Pin=(106.3 - 59.3) * pyunits.psi,
+        stage_num=3,
+        file="wrd_ro_inputs_3_13_21.yaml",
+    )
+    # Stage 3 actual (doesn't initialize)
+    # m = main(
+    #     Qin=506.5,
+    #     Cin=5.540 / 2,
+    #     Tin=295,
+    #     Pin=(106.3 - 59.3) * pyunits.psi,
+    #     stage_num=3,
+    #     file="wrd_ro_inputs_3_13_21.yaml",
+    # )
