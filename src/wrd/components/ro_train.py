@@ -49,7 +49,6 @@ def build_system(num_stages=3, file="wrd_ro_inputs_8_19_21.yaml"):
 
     m = ConcreteModel()
     m.fs = FlowsheetBlock(dynamic=False)
-    m.fs.costing = WaterTAPCosting()
     m.fs.properties = NaClParameterBlock()
 
     m.fs.feed = Feed(property_package=m.fs.properties)
@@ -310,7 +309,7 @@ def report_ro_train(blk, train_num=None, w=30):
         )
 
 
-def main(Qin=2637, Cin=0.528, Tin=302, Pin=101325, file="wrd_ro_inputs_8_19_21.yaml"):
+def main(Qin=2637, Cin=0.528, Tin=302, Pin=101325, file="wrd_ro_inputs_8_19_21.yaml", add_costing=True):
 
     m = build_system(file=file)
     set_ro_train_scaling(m.fs.ro_train)
@@ -323,18 +322,20 @@ def main(Qin=2637, Cin=0.528, Tin=302, Pin=101325, file="wrd_ro_inputs_8_19_21.y
     results = solver.solve(m, tee=True)
     assert_optimal_termination(results)
 
-    add_ro_train_costing(m.fs.ro_train)
-    m.fs.costing.cost_process()
-    m.fs.costing.add_LCOW(m.fs.product.properties[0].flow_vol_phase["Liq"])
-    m.fs.costing.add_specific_energy_consumption(
-        m.fs.product.properties[0].flow_vol_phase["Liq"],
-        name="SEC",
-    )
-    # m.fs.costing.initialize()
+    if add_costing:
+        m.fs.costing = WaterTAPCosting()
+        add_ro_train_costing(m.fs.ro_train)
+        m.fs.costing.cost_process()
+        m.fs.costing.add_LCOW(m.fs.product.properties[0].flow_vol_phase["Liq"])
+        m.fs.costing.add_specific_energy_consumption(
+            m.fs.product.properties[0].flow_vol_phase["Liq"],
+            name="SEC",
+        )
+        m.fs.costing.initialize()
 
-    assert degrees_of_freedom(m) == 0
-    results = solver.solve(m, tee=True)
-    assert_optimal_termination(results)
+        assert degrees_of_freedom(m) == 0
+        results = solver.solve(m, tee=True)
+        assert_optimal_termination(results)
 
     report_ro_train(m.fs.ro_train, w=30)
 
