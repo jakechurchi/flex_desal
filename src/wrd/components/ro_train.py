@@ -43,7 +43,7 @@ __all__ = [
 solver = get_solver()
 
 
-def build_system():
+def build_system(num_stages=3, file="wrd_ro_inputs_8_19_21.yaml"):
 
     m = ConcreteModel()
     m.fs = FlowsheetBlock(dynamic=False)
@@ -53,7 +53,9 @@ def build_system():
     touch_flow_and_conc(m.fs.feed)
 
     m.fs.ro_train = FlowsheetBlock(dynamic=False)
-    build_ro_train(m.fs.ro_train, prop_package=m.fs.properties)
+    build_ro_train(
+        m.fs.ro_train, num_stages=num_stages, prop_package=m.fs.properties, file=file
+    )
 
     m.fs.product = Product(property_package=m.fs.properties)
     m.fs.brine = Product(property_package=m.fs.properties)
@@ -84,14 +86,14 @@ def build_system():
     return m
 
 
-def set_inlet_conditions(m, Qin=2637, Cin=0.5):
+def set_inlet_conditions(m, Qin=2637, Cin=0.5, Tin=302, Pin=101325):
 
     m.fs.feed.properties.calculate_state(
         var_args={
             ("flow_vol_phase", ("Liq")): Qin * pyunits.gallons / pyunits.minute,
             ("conc_mass_phase_comp", ("Liq", "NaCl")): Cin * pyunits.g / pyunits.L,
-            ("pressure", None): 101325,
-            ("temperature", None): 273.15 + 27,
+            ("pressure", None): Pin,
+            ("temperature", None): Tin,
         },
         hold_state=True,
     )
@@ -254,6 +256,9 @@ def report_ro_train(blk, train_num=None, w=30):
     print(f"\n\n{header}\n")
     print(f'{"Parameter":<{w}s}{"Value":<{w}s}{"Units":<{w}s}')
     print(f"{'-' * (3 * w)}")
+    print(
+        f'{f"Total Pump Power":<{w}s}{value(pyunits.convert(blk.total_pump_power, to_units=pyunits.kilowatt)):<{w}.3f}{"kW"}'
+    )
 
     print(f'{f"Overall Recovery":<{w}s}{value(blk.recovery_vol)*100:<{w}.3f}{"%"}')
     print(
@@ -291,12 +296,12 @@ def report_ro_train(blk, train_num=None, w=30):
         )
 
 
-def main(Qin=2637, Cin=0.528):
+def main(Qin=2637, Cin=0.528, Tin=302, Pin=101325, file="wrd_ro_inputs_8_19_21.yaml"):
 
-    m = build_system()
+    m = build_system(file=file)
     set_ro_train_scaling(m.fs.ro_train)
     calculate_scaling_factors(m)
-    set_inlet_conditions(m, Qin=Qin, Cin=Cin)
+    set_inlet_conditions(m, Qin=Qin, Cin=Cin, Tin=Tin, Pin=Pin)
     set_ro_train_op_conditions(m.fs.ro_train)
     initialize_system(m)
     assert degrees_of_freedom(m) == 0
@@ -308,4 +313,8 @@ def main(Qin=2637, Cin=0.528):
 
 
 if __name__ == "__main__":
-    m = main()
+    # m = main()
+
+    m = main(
+        Qin=2452, Cin=0.503, Tin=295, Pin=101325, file="wrd_ro_inputs_3_13_21.yaml"
+    )
