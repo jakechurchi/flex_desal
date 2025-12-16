@@ -23,6 +23,7 @@ from idaes.models.unit_models import (
 )
 from idaes.core.util.scaling import calculate_scaling_factors
 
+from watertap.costing import WaterTAPCosting
 from watertap.core.util.model_diagnostics.infeasible import *
 from watertap.property_models.NaCl_T_dep_prop_pack import NaClParameterBlock
 from watertap.core.solvers import get_solver
@@ -34,7 +35,13 @@ from srp.utils import touch_flow_and_conc
 solver = get_solver()
 
 
-def build_ro_system(m=None, num_trains=3, num_stages=3, prop_package=None):
+def build_ro_system(
+    m=None,
+    num_trains=3,
+    num_stages=3,
+    prop_package=None,
+    file="wrd_ro_inputs_8_19_21.yaml",
+):
 
     if m is None:
         m = ConcreteModel()
@@ -71,6 +78,7 @@ def build_ro_system(m=None, num_trains=3, num_stages=3, prop_package=None):
         momentum_mixing_type=MomentumMixingType.none,
         inlet_list=perm_inlet_list,
     )
+
     brine_inlet_list = [f"brine_inlet{i}" for i in m.fs.trains]
 
     m.fs.brine_mixer = Mixer(
@@ -89,6 +97,7 @@ def build_ro_system(m=None, num_trains=3, num_stages=3, prop_package=None):
             m.fs.train[i],
             prop_package=m.fs.properties,
             num_stages=num_stages,
+            file=file,
         )
 
     for i, outlet in enumerate(outlet_list, start=1):
@@ -130,7 +139,7 @@ def build_ro_system(m=None, num_trains=3, num_stages=3, prop_package=None):
     TransformationFactory("network.expand_arcs").apply_to(m)
 
     m.fs.properties.set_default_scaling(
-        "flow_mass_phase_comp", 1e-1, index=("Liq", "H2O")  # changed from 1
+        "flow_mass_phase_comp", 1e-1, index=("Liq", "H2O")
     )
     m.fs.properties.set_default_scaling(
         "flow_mass_phase_comp", 1e2, index=("Liq", "NaCl")
@@ -210,6 +219,16 @@ def initialize_ro_system(m):
     m.fs.disposal.initialize()
 
 
+def add_ro_system_costing(m, costing_package=None):
+
+    if costing_package is None:
+        # costing_package = m.fs.costing
+        m.fs.costing = costing_package = WaterTAPCosting()
+
+    for i in m.fs.trains:
+        add_ro_train_costing(m.fs.train[i], costing_package=costing_package)
+
+
 def report_ro_system(m, w=30):
 
     for i in m.fs.trains:
@@ -252,14 +271,25 @@ def report_ro_system_pumps(m, w=30):
             report_pump(pump, w=w)
 
 
-def main():
+def main(add_costing=False):
 
     m = build_ro_system(num_trains=4, num_stages=3)
     set_ro_system_scaling(m)
     calculate_scaling_factors(m)
     set_inlet_conditions(m, Qin=2637, Cin=0.5)
     set_ro_system_op_conditions(m)
+
     initialize_ro_system(m)
+
+    if add_costing:
+        add_ro_system_costing(m)
+        m.fs.costing.cost_process()
+        m.fs.costing.add_LCOW(m.fs.product.properties[0].flow_vol_phase["Liq"])
+        m.fs.costing.add_specific_energy_consumption(
+            m.fs.product.properties[0].flow_vol_phase["Liq"],
+            name="SEC",
+        )
+        m.fs.costing.initialize()
 
     assert degrees_of_freedom(m) == 0
     results = solver.solve(m)
@@ -271,4 +301,4 @@ def main():
 
 
 if __name__ == "__main__":
-    m = main()
+    m = main(add_costing=True)
