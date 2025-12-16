@@ -352,6 +352,9 @@ def report_ro(blk, w=30):
         f'{f"Recovery":<{w}s}{value(blk.unit.recovery_vol_phase[0, "Liq"])*100:<{w}.3f}{"%"}'
     )
     print(
+        f'{f"Rejection":<{w}s}{value(blk.unit.rejection_phase_comp[0, "Liq", "NaCl"])*100:<{w}.3f}{"%"}'
+    )
+    print(
         f'{f"Perm Conc":<{w}s}{value(pyunits.convert(blk.unit.mixed_permeate[0].conc_mass_phase_comp["Liq", "NaCl"], to_units=pyunits.mg / pyunits.liter)):<{w}.3f}{f"mg/L"}'
     )
     print(
