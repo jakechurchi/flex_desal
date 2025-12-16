@@ -47,7 +47,7 @@ default_ro_config = dict(
 
 __all__ = [
     "build_ro",
-    "init_ro",
+    "initialize_ro",
     "set_ro_op_conditions",
     "set_ro_scaling",
     "report_ro",
@@ -277,7 +277,7 @@ def init_system(m):
     m.fs.feed.initialize()
     propagate_state(m.fs.feed_to_ro)
 
-    init_ro(m.fs.ro)
+    initialize_ro(m.fs.ro)
 
     propagate_state(m.fs.ro_to_product)
     m.fs.product.initialize()
@@ -286,7 +286,7 @@ def init_system(m):
     m.fs.brine.initialize()
 
 
-def init_ro(blk):
+def initialize_ro(blk):
 
     blk.feed.initialize()
     propagate_state(blk.feed_to_unit)

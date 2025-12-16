@@ -159,7 +159,7 @@ def initialize_ro_stage(blk):
     initialize_pump(blk.pump)
 
     propagate_state(blk.pump_to_ro)
-    init_ro(blk.ro)
+    initialize_ro(blk.ro)
 
     propagate_state(blk.ro_to_product)
     blk.product.initialize()
