@@ -201,8 +201,7 @@ def main(
     return m
 
 
-if __name__ == "__main__":
-
+def run_august_stages():
     # August 19, 2021 Data
     # Stage 1
     m = main()
@@ -224,6 +223,9 @@ if __name__ == "__main__":
         stage_num=3,
         file="wrd_ro_inputs_8_19_21.yaml",
     )
+
+
+def run_march_stages():
 
     # March 13, 2021 Data
     # Stage 1
@@ -262,3 +264,8 @@ if __name__ == "__main__":
     #     stage_num=3,
     #     file="wrd_ro_inputs_3_13_21.yaml",
     # )
+
+
+if __name__ == "__main__":
+    run_august_stages()
+    run_march_stages()
