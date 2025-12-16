@@ -309,7 +309,14 @@ def report_ro_train(blk, train_num=None, w=30):
         )
 
 
-def main(Qin=2637, Cin=0.528, Tin=302, Pin=101325, file="wrd_ro_inputs_8_19_21.yaml", add_costing=True):
+def main(
+    Qin=2637,
+    Cin=0.528,
+    Tin=302,
+    Pin=101325,
+    file="wrd_ro_inputs_8_19_21.yaml",
+    add_costing=True,
+):
 
     m = build_system(file=file)
     set_ro_train_scaling(m.fs.ro_train)

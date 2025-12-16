@@ -7,7 +7,9 @@ from wrd.components.ro_train import main
 def test_ro_train1_8_19_21():
     expected_power = (196.25 + 22.7 + 29.3) * pyunits.kW
     expected_product_flow = (1608 + 635 + 198) * pyunits.gal / pyunits.min
-    expected_SEC = pyunits.convert(expected_power / expected_product_flow, to_units=pyunits.kWh / pyunits.m**3)
+    expected_SEC = pyunits.convert(
+        expected_power / expected_product_flow, to_units=pyunits.kWh / pyunits.m**3
+    )
 
     m = main()
 
@@ -18,7 +20,9 @@ def test_ro_train1_8_19_21():
         m.fs.ro_train.product.properties[0].flow_vol_phase["Liq"],
         to_units=pyunits.gal / pyunits.min,
     )
-    assert pytest.approx(value(actual_product_flow), rel=0.15) == value(expected_product_flow)
+    assert pytest.approx(value(actual_product_flow), rel=0.15) == value(
+        expected_product_flow
+    )
     assert pytest.approx(value(m.fs.costing.SEC), rel=0.15) == value(expected_SEC)
 
 
@@ -26,7 +30,9 @@ def test_ro_train1_8_19_21():
 def test_ro_train1_3_13_21():
     expected_power = (189.6 + 22.8 + 24.9) * pyunits.kW
     expected_product_flow = (1404.7 + 617 + 279) * pyunits.gal / pyunits.min
-    expected_SEC = pyunits.convert(expected_power / expected_product_flow, to_units=pyunits.kWh / pyunits.m**3)
+    expected_SEC = pyunits.convert(
+        expected_power / expected_product_flow, to_units=pyunits.kWh / pyunits.m**3
+    )
 
     m = main(
         Qin=2452, Cin=0.503, Tin=295, Pin=101325, file="wrd_ro_inputs_3_13_21.yaml"
@@ -39,7 +45,9 @@ def test_ro_train1_3_13_21():
         m.fs.ro_train.product.properties[0].flow_vol_phase["Liq"],
         to_units=pyunits.gal / pyunits.min,
     )
-    assert pytest.approx(value(actual_product_flow), rel=0.15) == value(expected_product_flow)
+    assert pytest.approx(value(actual_product_flow), rel=0.15) == value(
+        expected_product_flow
+    )
     assert pytest.approx(value(m.fs.costing.SEC), rel=0.15) == value(expected_SEC)
 
 

@@ -198,7 +198,9 @@ def set_pump_op_conditions(blk):
         blk.config_data, "pump_outlet_pressure", "pumps", f"pump_{blk.stage_num}"
     )
 
-    print(f"Setting pump {blk.stage_num} operating conditions, Pout = {value(Pout)} psi")
+    print(
+        f"Setting pump {blk.stage_num} operating conditions, Pout = {value(Pout)} psi"
+    )
     blk.unit.control_volume.properties_out[0].pressure.fix(Pout)
 
 
@@ -325,5 +327,5 @@ if __name__ == "__main__":
     # Stage 2
     m = main(Qin=1029, Pin=131.2 * pyunits.psi, stage_num=2)
     # Stage 3
-    m = main(Qin=384, Pin=(112.6-41.9) * pyunits.psi, stage_num=3)
+    m = main(Qin=384, Pin=(112.6 - 41.9) * pyunits.psi, stage_num=3)
     m.fs.costing.SEC.display()
