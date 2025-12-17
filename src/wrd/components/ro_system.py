@@ -39,12 +39,14 @@ def build_ro_system(
     m=None,
     num_trains=3,
     num_stages=3,
+    split_fractions=None,
     prop_package=None,
     file="wrd_ro_inputs_8_19_21.yaml",
 ):
 
     if m is None:
         m = ConcreteModel()
+        m.standalone = True
         m.fs = FlowsheetBlock(dynamic=False)
         m.fs.properties = NaClParameterBlock()
         m.fs.feed = Feed(property_package=m.fs.properties)
@@ -53,6 +55,9 @@ def build_ro_system(
         touch_flow_and_conc(m.fs.product)
         m.fs.disposal = Product(property_package=m.fs.properties)
         touch_flow_and_conc(m.fs.disposal)
+    
+    else:
+        m.standalone = False
 
     if prop_package is None:
         prop_package = m.fs.properties
@@ -64,16 +69,20 @@ def build_ro_system(
 
     outlet_list = [f"train{i}" for i in m.fs.trains]
 
-    m.fs.feed_separator = Separator(
+    m.fs.ro_feed_separator = Separator(
         property_package=m.fs.properties,
         outlet_list=outlet_list,
         split_basis=SplittingType.componentFlow,
     )
-    m.fs.feed_separator.even_split = 1.0 / len(outlet_list)
+    
+    if split_fractions is None:
+        m.fs.ro_feed_separator.even_split = 1.0 / len(outlet_list)
+    else:
+        raise NotImplementedError("Custom split fractions not yet implemented.")
 
     perm_inlet_list = [f"perm_inlet{i}" for i in m.fs.trains]
 
-    m.fs.product_mixer = Mixer(
+    m.fs.ro_product_mixer = Mixer(
         property_package=m.fs.properties,
         momentum_mixing_type=MomentumMixingType.none,
         inlet_list=perm_inlet_list,
@@ -81,13 +90,13 @@ def build_ro_system(
 
     brine_inlet_list = [f"brine_inlet{i}" for i in m.fs.trains]
 
-    m.fs.brine_mixer = Mixer(
+    m.fs.ro_brine_mixer = Mixer(
         property_package=m.fs.properties,
         momentum_mixing_type=MomentumMixingType.none,
         inlet_list=brine_inlet_list,
     )
 
-    m.fs.recovery_vol = Expression(
+    m.fs.recovery_vol_ro = Expression(
         expr=(m.fs.product.properties[0].flow_vol_phase["Liq"])
         / (m.fs.feed.properties[0].flow_vol_phase["Liq"])
     )
@@ -102,9 +111,9 @@ def build_ro_system(
 
     for i, outlet in enumerate(outlet_list, start=1):
 
-        sep_out = m.fs.feed_separator.find_component(f"{outlet}")
-        perm_mix_in = m.fs.product_mixer.find_component(f"perm_inlet{i}")
-        brine_mix_in = m.fs.brine_mixer.find_component(f"brine_inlet{i}")
+        sep_out = m.fs.ro_feed_separator.find_component(f"{outlet}")
+        perm_mix_in = m.fs.ro_product_mixer.find_component(f"perm_inlet{i}")
+        brine_mix_in = m.fs.ro_brine_mixer.find_component(f"brine_inlet{i}")
         a = Arc(
             source=sep_out,
             destination=m.fs.train[i].feed.inlet,
@@ -121,29 +130,30 @@ def build_ro_system(
         )
         m.fs.add_component(f"train{i}_to_brine_mix", a)
 
-    m.fs.feed_to_separator = Arc(
+    m.fs.ro_feed_to_separator = Arc(
         source=m.fs.feed.outlet,
-        destination=m.fs.feed_separator.inlet,
+        destination=m.fs.ro_feed_separator.inlet,
     )
 
-    m.fs.product_mixer_to_product = Arc(
-        source=m.fs.product_mixer.outlet,
-        destination=m.fs.product.inlet,
-    )
+    if m.standalone:
+        m.fs.product_mixer_to_product = Arc(
+            source=m.fs.ro_product_mixer.outlet,
+            destination=m.fs.product.inlet,
+        )
 
-    m.fs.brine_mixer_to_disposal = Arc(
-        source=m.fs.brine_mixer.outlet,
-        destination=m.fs.disposal.inlet,
-    )
+        m.fs.brine_mixer_to_disposal = Arc(
+            source=m.fs.ro_brine_mixer.outlet,
+            destination=m.fs.disposal.inlet,
+        )
 
-    TransformationFactory("network.expand_arcs").apply_to(m)
+        TransformationFactory("network.expand_arcs").apply_to(m)
 
-    m.fs.properties.set_default_scaling(
-        "flow_mass_phase_comp", 1e-1, index=("Liq", "H2O")
-    )
-    m.fs.properties.set_default_scaling(
-        "flow_mass_phase_comp", 1e2, index=("Liq", "NaCl")
-    )
+        m.fs.properties.set_default_scaling(
+            "flow_mass_phase_comp", 1e-1, index=("Liq", "H2O")
+        )
+        m.fs.properties.set_default_scaling(
+            "flow_mass_phase_comp", 1e2, index=("Liq", "NaCl")
+        )
 
     return m
 
@@ -175,30 +185,32 @@ def set_ro_system_op_conditions(m):
     for i in m.fs.trains:
         set_ro_train_op_conditions(m.fs.train[i])
         if i != m.fs.trains.first():
-            m.fs.feed_separator.split_fraction[0, f"train{i}", "H2O"].fix(
-                m.fs.feed_separator.even_split
+            m.fs.ro_feed_separator.split_fraction[0, f"train{i}", "H2O"].fix(
+                m.fs.ro_feed_separator.even_split
             )
-            m.fs.feed_separator.split_fraction[0, f"train{i}", "NaCl"].fix(
-                m.fs.feed_separator.even_split
+            m.fs.ro_feed_separator.split_fraction[0, f"train{i}", "NaCl"].fix(
+                m.fs.ro_feed_separator.even_split
             )
         else:
-            m.fs.feed_separator.split_fraction[0, f"train{i}", "H2O"].set_value(
-                m.fs.feed_separator.even_split
+            m.fs.ro_feed_separator.split_fraction[0, f"train{i}", "H2O"].set_value(
+                m.fs.ro_feed_separator.even_split
             )
-            m.fs.feed_separator.split_fraction[0, f"train{i}", "NaCl"].set_value(
-                m.fs.feed_separator.even_split
+            m.fs.ro_feed_separator.split_fraction[0, f"train{i}", "NaCl"].set_value(
+                m.fs.ro_feed_separator.even_split
             )
 
-    m.fs.product_mixer.outlet.pressure[0].fix(101325)
-    m.fs.brine_mixer.outlet.pressure[0].fix(101325)
+    m.fs.ro_product_mixer.outlet.pressure[0].fix(101325)
+    m.fs.ro_brine_mixer.outlet.pressure[0].fix(101325)
 
 
 def initialize_ro_system(m):
 
-    m.fs.feed.initialize()
-    propagate_state(m.fs.feed_to_separator)
+    if m.standalone:
+        m.fs.feed.initialize()
 
-    m.fs.feed_separator.initialize()
+    propagate_state(m.fs.ro_feed_to_separator)
+
+    m.fs.ro_feed_separator.initialize()
 
     for i in m.fs.trains:
         a = m.fs.find_component(f"sep_to_train{i}")
@@ -210,13 +222,15 @@ def initialize_ro_system(m):
         a = m.fs.find_component(f"train{i}_to_brine_mix")
         propagate_state(a)
 
-    m.fs.product_mixer.initialize()
-    propagate_state(m.fs.product_mixer_to_product)
-    m.fs.product.initialize()
+    m.fs.ro_product_mixer.initialize()
+    m.fs.ro_brine_mixer.initialize()
 
-    m.fs.brine_mixer.initialize()
-    propagate_state(m.fs.brine_mixer_to_disposal)
-    m.fs.disposal.initialize()
+    if m.standalone:
+        propagate_state(m.fs.product_mixer_to_product)
+        m.fs.product.initialize()
+
+        propagate_state(m.fs.brine_mixer_to_disposal)
+        m.fs.disposal.initialize()
 
 
 def add_ro_system_costing(m, costing_package=None):
@@ -256,7 +270,7 @@ def report_ro_system(m, w=30):
     print(
         f'{f"Final Brine Conc":<{w}s}{value(pyunits.convert(m.fs.disposal.properties[0].conc_mass_phase_comp["Liq", "NaCl"], to_units=pyunits.mg / pyunits.L)):<{w}.3f}{"mg/L"}'
     )
-    print(f'{f"Overall Recovery":<{w}s}{value(m.fs.recovery_vol)*100:<{w}.3f}{"%"}')
+    print(f'{f"Overall Recovery":<{w}s}{value(m.fs.recovery_vol_ro)*100:<{w}.3f}{"%"}')
 
 
 def report_ro_system_pumps(m, w=30):
