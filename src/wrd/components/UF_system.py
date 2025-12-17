@@ -45,6 +45,7 @@ def build_uf_system(
 
     if m is None:
         m = ConcreteModel()
+        m.standalone = True
         m.fs = FlowsheetBlock(dynamic=False)
         m.fs.properties = NaClParameterBlock()
         m.fs.feed = Feed(property_package=m.fs.properties)
@@ -54,6 +55,9 @@ def build_uf_system(
         m.fs.disposal = Product(property_package=m.fs.properties)
         touch_flow_and_conc(m.fs.disposal)
 
+    else:
+        m.standalone = False
+
     if prop_package is None:
         prop_package = m.fs.properties
 
@@ -61,26 +65,26 @@ def build_uf_system(
     m.fs.uf_trains = Set(initialize=range(1, m.uf_num_trains + 1))
     m.fs.uf_train = FlowsheetBlock(m.fs.uf_trains, dynamic=False)
 
-    outlet_list = [f"train{i}" for i in m.fs.uf_trains]
+    outlet_list = [f"uf{i}" for i in m.fs.uf_trains]
 
-    m.fs.uf_feed_separtor = Separator(
+    m.fs.uf_feed_separator = Separator(
         property_package=m.fs.properties,
         outlet_list=outlet_list,
         split_basis=SplittingType.componentFlow,
     )
     if split_fraction is None:
         # Even Split
-        m.fs.uf_feed_separtor.feed_split = 1.0 / len(outlet_list)
+        m.fs.uf_feed_separator.feed_split = 1.0 / len(outlet_list)
 
-    perm_inlet_list = [f"perm_inlet{i}" for i in m.fs.uf_trains]
+    perm_inlet_list = [f"uf_prod_inlet{i}" for i in m.fs.uf_trains]
 
-    m.fs.product_mixer = Mixer(
+    m.fs.uf_product_mixer = Mixer(
         property_package=m.fs.properties,
         momentum_mixing_type=MomentumMixingType.none,
         inlet_list=perm_inlet_list,
     )
 
-    brine_inlet_list = [f"brine_inlet{i}" for i in m.fs.uf_trains]
+    brine_inlet_list = [f"uf_disp_inlet{i}" for i in m.fs.uf_trains]
 
     m.fs.uf_disposal_mixer = Mixer(
         property_package=m.fs.properties,
@@ -103,39 +107,40 @@ def build_uf_system(
 
     for i, outlet in enumerate(outlet_list, start=1):
 
-        sep_out = m.fs.uf_feed_separtor.find_component(f"{outlet}")
-        perm_mix_in = m.fs.product_mixer.find_component(f"perm_inlet{i}")
-        brine_mix_in = m.fs.uf_disposal_mixer.find_component(f"brine_inlet{i}")
+        sep_out = m.fs.uf_feed_separator.find_component(f"{outlet}")
+        perm_mix_in = m.fs.uf_product_mixer.find_component(f"uf_prod_inlet{i}")
+        brine_mix_in = m.fs.uf_disposal_mixer.find_component(f"uf_disp_inlet{i}")
         a = Arc(
             source=sep_out,
             destination=m.fs.uf_train[i].feed.inlet,
         )
-        m.fs.add_component(f"sep_to_train{i}", a)
+        m.fs.add_component(f"sep_to_uf{i}", a)
         a = Arc(
             source=m.fs.uf_train[i].product.outlet,
             destination=perm_mix_in,
         )
-        m.fs.add_component(f"train{i}_to_perm_mix", a)
+        m.fs.add_component(f"uf{i}_to_prod_mix", a)
         a = Arc(
             source=m.fs.uf_train[i].disposal.outlet,
             destination=brine_mix_in,
         )
-        m.fs.add_component(f"train{i}_to_brine_mix", a)
+        m.fs.add_component(f"uf{i}_to_disp_mix", a)
 
-    m.fs.feed_to_separator = Arc(
+    m.fs.uf_feed_to_separator = Arc(
         source=m.fs.feed.outlet,
-        destination=m.fs.uf_feed_separtor.inlet,
+        destination=m.fs.uf_feed_separator.inlet,
     )
 
-    m.fs.product_mixer_to_product = Arc(
-        source=m.fs.product_mixer.outlet,
-        destination=m.fs.product.inlet,
-    )
+    if m.standalone:
+        m.fs.uf_product_mixer_to_product = Arc(
+            source=m.fs.uf_product_mixer.outlet,
+            destination=m.fs.product.inlet,
+        )
 
-    m.fs.brine_mixer_to_disposal = Arc(
-        source=m.fs.uf_disposal_mixer.outlet,
-        destination=m.fs.disposal.inlet,
-    )
+        m.fs.uf_disposal_mixer_to_disposal = Arc(
+            source=m.fs.uf_disposal_mixer.outlet,
+            destination=m.fs.disposal.inlet,
+        )
 
     TransformationFactory("network.expand_arcs").apply_to(m)
 
@@ -176,48 +181,51 @@ def set_uf_system_op_conditions(m):
     for i in m.fs.uf_trains:
         set_uf_train_op_conditions(m.fs.uf_train[i])
         if i != m.fs.uf_trains.first():
-            m.fs.uf_feed_separtor.split_fraction[0, f"train{i}", "H2O"].fix(
-                m.fs.uf_feed_separtor.feed_split
+            m.fs.uf_feed_separator.split_fraction[0, f"uf{i}", "H2O"].fix(
+                m.fs.uf_feed_separator.feed_split
             )
-            m.fs.uf_feed_separtor.split_fraction[0, f"train{i}", "NaCl"].fix(
-                m.fs.uf_feed_separtor.feed_split
+            m.fs.uf_feed_separator.split_fraction[0, f"uf{i}", "NaCl"].fix(
+                m.fs.uf_feed_separator.feed_split
             )
         else:
-            m.fs.uf_feed_separtor.split_fraction[0, f"train{i}", "H2O"].set_value(
-                m.fs.uf_feed_separtor.feed_split
+            m.fs.uf_feed_separator.split_fraction[0, f"uf{i}", "H2O"].set_value(
+                m.fs.uf_feed_separator.feed_split
             )
-            m.fs.uf_feed_separtor.split_fraction[0, f"train{i}", "NaCl"].set_value(
-                m.fs.uf_feed_separtor.feed_split
+            m.fs.uf_feed_separator.split_fraction[0, f"uf{i}", "NaCl"].set_value(
+                m.fs.uf_feed_separator.feed_split
             )
 
-    m.fs.product_mixer.outlet.pressure[0].fix(101325)
+    m.fs.uf_product_mixer.outlet.pressure[0].fix(101325)
     m.fs.uf_disposal_mixer.outlet.pressure[0].fix(101325)
 
 
 def initialize_uf_system(m):
 
-    m.fs.feed.initialize()
-    propagate_state(m.fs.feed_to_separator)
+    if m.standalone:
+        m.fs.feed.initialize()
+    propagate_state(m.fs.uf_feed_to_separator)
 
-    m.fs.uf_feed_separtor.initialize()
+    m.fs.uf_feed_separator.initialize()
 
     for i in m.fs.uf_trains:
-        a = m.fs.find_component(f"sep_to_train{i}")
+        a = m.fs.find_component(f"sep_to_uf{i}")
         propagate_state(a)
         initialize_uf_train(m.fs.uf_train[i])
 
-        a = m.fs.find_component(f"train{i}_to_perm_mix")
+        a = m.fs.find_component(f"uf{i}_to_prod_mix")
         propagate_state(a)
-        a = m.fs.find_component(f"train{i}_to_brine_mix")
+        a = m.fs.find_component(f"uf{i}_to_disp_mix")
         propagate_state(a)
 
-    m.fs.product_mixer.initialize()
-    propagate_state(m.fs.product_mixer_to_product)
-    m.fs.product.initialize()
-
+    m.fs.uf_product_mixer.initialize()
     m.fs.uf_disposal_mixer.initialize()
-    propagate_state(m.fs.brine_mixer_to_disposal)
-    m.fs.disposal.initialize()
+
+    if m.standalone:
+        propagate_state(m.fs.uf_product_mixer_to_product)
+        m.fs.product.initialize()
+
+        propagate_state(m.fs.uf_disposal_mixer_to_disposal)
+        m.fs.disposal.initialize()
 
 
 def add_uf_system_costing(m, costing_package=None):
@@ -239,7 +247,7 @@ def report_uf_system(m, w=30):
         # print(f"\n{header}\n")
         report_uf_train(m.fs.uf_train[i], train_num=i, w=w)
 
-    title = f"Overall System Performance"
+    title = f"Overall UF System Performance"
     side = int(((3 * w) - len(title)) / 2) - 1
     header = "_" * side + f" {title} " + "_" * side
     print(f"\n\n{header}\n")
@@ -263,7 +271,7 @@ def report_uf_system(m, w=30):
 def report_uf_system_pumps(m, w=30):
     for i in m.fs.uf_trains:
         pump = m.fs.uf_train[i].pump
-        title = f"Train {i} Pump Report"
+        title = f"UF Train {i} Pump Report"
         side = int(((3 * w) - len(title)) / 2) - 1
         header = "*" * side + f" {title} " + "*" * side
         print(f"\n{header}\n")
@@ -292,8 +300,8 @@ def main(add_costing=False):
 
     results = solver.solve(m)
     assert_optimal_termination(results)
-    report_uf_system(m, w=40)
-    # report_uf_system_pumps(m, w=20)
+    report_uf_system(m)
+    report_uf_system_pumps(m)
 
     return m
 
