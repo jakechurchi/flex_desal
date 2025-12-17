@@ -1,14 +1,3 @@
-#################################################################################
-# WaterTAP Copyright (c) 2020-2024, The Regents of the University of California,
-# through Lawrence Berkeley National Laboratory, Oak Ridge National Laboratory,
-# National Renewable Energy Laboratory, and National Energy Technology
-# Laboratory (subject to receipt of any required approvals from the U.S. Dept.
-# of Energy). All rights reserved.
-#
-# Please see the files COPYRIGHT.md and LICENSE.md for full copyright and license
-# information, respectively. These files are also available online at the URL
-# "https://github.com/watertap-org/watertap/"
-#################################################################################
 """
 Chemical addition unit model
 """
@@ -21,9 +10,7 @@ from pyomo.environ import (
 from pyomo.common.config import ConfigValue, In
 
 import idaes.core.util.scaling as iscale
-from idaes.core import (
-    declare_process_block_class,
-)
+from idaes.core import declare_process_block_class
 from idaes.core.util.misc import StrEnum
 from idaes.core.util.constants import Constants
 import idaes.logger as idaeslog
@@ -273,23 +260,6 @@ class ChemicalAdditionData(StateJunctionData):
 
         if iscale.get_scaling_factor(self.pumping_power) is None:
             iscale.set_scaling_factor(self.pumping_power, 1)
-
-        # sf_dose = iscale.get_scaling_factor(
-        #     self.properties[0].conc_mass_phase_comp["Liq", "tds"]
-        # )
-        # iscale.set_scaling_factor(self.dose, sf_dose)
-
-        # sf_chem_flow_vol = iscale.get_scaling_factor(
-        #     self.properties[0].flow_vol_phase["Liq"]
-        # ) / (
-        #     self.ratio_in_solution * self.solution_density
-        # )
-        # iscale.set_scaling_factor(self.chemical_soln_flow_vol, sf_chem_flow_vol)
-
-        # sf_pumping_power = iscale.get_scaling_factor(
-        #     self.properties[0].flow_mass_phase["Liq"]
-        # ) * Constants.acceleration_gravity * self.pump_head / self.pump_efficiency
-        # iscale.set_scaling_factor(self.pumping_power, sf_pumping_power)
 
     @property
     def default_costing_method(self):
