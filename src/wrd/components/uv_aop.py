@@ -15,34 +15,56 @@ from pyomo.network import Arc
 from idaes.core import FlowsheetBlock, UnitModelCostingBlock
 from idaes.core.util.initialization import propagate_state
 from idaes.core.util.scaling import (
-    constraint_scaling_transform,
     calculate_scaling_factors,
     set_scaling_factor,
 )
-from idaes.models.unit_models import StateJunction, Feed
-from idaes.core.util.model_statistics import *
+from idaes.models.unit_models import StateJunction, Feed, Product
+from idaes.core.util.model_statistics import degrees_of_freedom
 
 from watertap.core.solvers import get_solver
 from watertap.property_models.NaCl_T_dep_prop_pack import NaClParameterBlock
-from watertap.core.util.model_diagnostics.infeasible import *
-from watertap.core.util.initialization import *
+
+from srp.utils import touch_flow_and_conc
 
 
 def build_system(**kwargs):
     m = ConcreteModel()
     m.fs = FlowsheetBlock(dynamic=False)
-    m.fs.ro_properties = NaClParameterBlock()
-    m.fs.feed = Feed(property_package=m.fs.ro_properties)
+    m.fs.properties = NaClParameterBlock()
+
+    m.fs.feed = Feed(property_package=m.fs.properties)
+
     m.fs.uv_aop_system = FlowsheetBlock(dynamic=False)
-    build_uv_aop(m.fs.uv_aop_system, prop_package=m.fs.ro_properties, **kwargs)
+    build_uv_aop(m.fs.uv_aop_system, prop_package=m.fs.properties, **kwargs)
+
+    m.fs.product = Product(property_package=m.fs.properties)
+
     m.fs.feed_to_unit = Arc(
         source=m.fs.feed.outlet, destination=m.fs.uv_aop_system.feed.inlet
+    )
+    m.fs.unit_to_product = Arc(
+        source=m.fs.uv_aop_system.unit.outlet, destination=m.fs.product.inlet
+    )
+
+    TransformationFactory("network.expand_arcs").apply_to(m)
+
+    m.fs.properties.set_default_scaling(
+        "flow_mass_phase_comp", 1e-1, index=("Liq", "H2O")
+    )
+    m.fs.properties.set_default_scaling(
+        "flow_mass_phase_comp", 1e2, index=("Liq", "NaCl")
     )
     return m
 
 
-def build_uv_aop(blk, prop_package):
+def build_uv_aop(blk, prop_package=None):
+
+    if prop_package is None:
+        m = blk.model()
+        prop_package = m.fs.properties
+
     blk.feed = StateJunction(property_package=prop_package)
+    touch_flow_and_conc(blk.feed)
     blk.product = StateJunction(property_package=prop_package)
     blk.unit = StateJunction(property_package=prop_package)
 
@@ -86,6 +108,8 @@ def build_uv_aop(blk, prop_package):
     blk.feed_to_unit = Arc(source=blk.feed.inlet, destination=blk.unit.inlet)
     blk.unit_to_product = Arc(source=blk.unit.outlet, destination=blk.product.inlet)
 
+    TransformationFactory("network.expand_arcs").apply_to(blk)
+
 
 def set_uv_aop_op_conditions(blk):
     pass
@@ -108,25 +132,27 @@ def set_inlet_conditions(m, Qin=0.27, Cin=0, P_in=1):
     m.fs.feed.properties[0].flow_mass_phase_comp["Liq", "NaCl"].fix(feed_mass_flow_salt)
     m.fs.feed.properties[0].temperature.fix(298.15 * pyunits.K)  # 25 C
     m.fs.feed.properties[0].pressure.fix(P_in * pyunits.bar)
-    m.fs.ro_properties.set_default_scaling(
-        "flow_mass_phase_comp", 1e-1, index=("Liq", "H2O")
-    )
-    m.fs.ro_properties.set_default_scaling(
-        "flow_mass_phase_comp", 1e2, index=("Liq", "NaCl")
-    )
 
 
 def initialize_system(m):
+
     m.fs.feed.initialize()
     propagate_state(m.fs.feed_to_unit)
+
     initialize_uv_aop(m.fs.uv_aop_system)
+
+    propagate_state(m.fs.unit_to_product)
+    m.fs.product.initialize()
 
 
 def initialize_uv_aop(blk):
+
     blk.feed.initialize()
     propagate_state(blk.feed_to_unit)
+
     blk.unit.initialize()
     propagate_state(blk.unit_to_product)
+
     blk.product.initialize()
 
 
@@ -166,15 +192,16 @@ def main():
     set_inlet_conditions(m)
     set_uv_aop_op_conditions(m.fs.uv_aop_system)
     add_uv_aop_scaling(m.fs.uv_aop_system)
-    TransformationFactory("network.expand_arcs").apply_to(m)
-    initialize_system(m)
     calculate_scaling_factors(m)
+    initialize_system(m)
 
     solver = get_solver()
     results = solver.solve(m)
     assert_optimal_termination(results)
     report_uv(m.fs.uv_aop_system, w=40)
 
+    return m
+
 
 if __name__ == "__main__":
-    main()
+    m = main()

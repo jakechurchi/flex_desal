@@ -3,6 +3,7 @@ from pyomo.environ import (
     ConcreteModel,
     Param,
     check_optimal_termination,
+    value,
     assert_optimal_termination,
     units as pyunits,
     value,
@@ -20,34 +21,42 @@ from watertap.property_models.NaCl_T_dep_prop_pack import NaClParameterBlock
 from watertap.core.zero_order_properties import WaterParameterBlock
 
 from wrd.components.chemical_addition import *
-from wrd.components.translator_ZO_to_NaCl import TranslatorZOtoNaCl
-from wrd.components.translator_NaCl_to_ZO import TranslatorNaCltoZO
 from wrd.components.ro_system import *
+
+# from wrd.components.ro_system_new import build_ro_system
 from wrd.components.decarbonator import *
 from wrd.components.uv_aop import *
 from wrd.components.UF_feed_pumps import *
+from wrd.components.pump import *
 from wrd.components.UF_separator import *
+from wrd.components.chemical_addition import *
 from wrd.utilities import load_config, get_config_file, get_config_value
+from srp.utils import touch_flow_and_conc
 
 
-def build_wrd_system(number_stages=3, **kwargs):
+def build_wrd_system(num_stages=3, **kwargs):
     m = ConcreteModel()
     m.fs = FlowsheetBlock(dynamic=False)
 
     # Get working directory path
-    dir_path = os.path.dirname(os.path.abspath(__file__))
-    m.db = Database(dbpath=os.path.join(dir_path, "meta_data"))
+    # dir_path = os.path.dirname(os.path.abspath(__file__))
+    # m.db = Database(dbpath=os.path.join(dir_path, "meta_data"))
 
     config_file_name = get_config_file("wrd_feed_flow.yaml")
     m.fs.config_data = load_config(config_file_name)
 
     # ZO Properties
-    m.fs.properties = WaterParameterBlock(solute_list=["tds", "tss"])
+    # m.fs.properties = WaterParameterBlock(solute_list=["tds"])
     # RO properties
-    m.fs.ro_properties = NaClParameterBlock()
+    m.fs.properties = NaClParameterBlock()
 
     # Add units
     m.fs.feed = Feed(property_package=m.fs.properties)
+    m.fs.product = Product(property_package=m.fs.properties)
+    m.fs.disposal = Product(property_package=m.fs.properties)
+    touch_flow_and_conc(m.fs.feed)
+    touch_flow_and_conc(m.fs.product)
+    touch_flow_and_conc(m.fs.disposal)
 
     # Pre- UF Treatment chemical addition units (read from metadata)
     m.fs.pre_treat_chem_list = [
@@ -62,75 +71,89 @@ def build_wrd_system(number_stages=3, **kwargs):
             m.fs.find_component(chem_name + "_addition"), chem_name, m.fs.properties
         )
 
+    # assert False
+
     # Translator block between ZO to RO property packages # may want to rename ro_properties because now it is most of the flowsheet, minus pre and post chem addition
-    m.fs.translator_ZO_to_RO = TranslatorZOtoNaCl(
-        inlet_property_package=m.fs.properties,
-        outlet_property_package=m.fs.ro_properties,
-        has_phase_equilibrium=False,
-        outlet_state_defined=True,
-    )
+    # m.fs.translator_ZO_to_RO = TranslatorZOtoNaCl(
+    #     inlet_property_package=m.fs.properties,
+    #     outlet_property_package=m.fs.ro_properties,
+    #     has_phase_equilibrium=False,
+    #     outlet_state_defined=True,
+    # )
 
     # UF Pumps
     m.fs.UF_pumps = FlowsheetBlock(dynamic=False)
-    build_UF_pumps(
-        m.fs.UF_pumps, m.fs.ro_properties, split_fractions=[1]
-    )  # could move split_fractions in yaml?
+    # build_UF_pumps(
+    #     m.fs.UF_pumps, m.fs.ro_properties, split_fractions=[1]
+    # )  # could move split_fractions in yaml?
+    build_pump(m.fs.UF_pumps, prop_package=m.fs.properties)
 
     # UF unit
     m.fs.UF = FlowsheetBlock(dynamic=False)
     # want to rename separator to UF
     build_separator(
-        blk=m.fs.UF, prop_package=m.fs.ro_properties, outlet_list=["to_RO", "to_waste"]
+        blk=m.fs.UF, prop_package=m.fs.properties, outlet_list=["to_RO", "to_waste"]
     )
 
     # RO unit
     m.fs.ro_system = FlowsheetBlock(dynamic=False)
     number_stages = 3
-    if "number_stages" in kwargs:
-        number_stages = kwargs["number_stages"]
+    # if "number_stages" in kwargs:
+    #     number_stages = kwargs["number_stages"]
     build_wrd_ro_system(
         m.fs.ro_system,
-        prop_package=m.fs.ro_properties,
+        prop_package=m.fs.properties,
         number_stages=number_stages,
     )
 
     # UV AOP - Still using ro_properties
     m.fs.UV_aop = FlowsheetBlock(dynamic=False)
-    build_uv_aop(m.fs.UV_aop, prop_package=m.fs.ro_properties)
+    build_uv_aop(m.fs.UV_aop, prop_package=m.fs.properties)
 
     # Decarbonator - Still using ro_properties
     m.fs.decarbonator = FlowsheetBlock(dynamic=False)
-    build_decarbonator(m.fs.decarbonator, prop_package=m.fs.ro_properties)
+    build_decarbonator(m.fs.decarbonator, prop_package=m.fs.properties)
+    # assert False
 
-    m.fs.translator_RO_to_ZO = TranslatorNaCltoZO(
-        inlet_property_package=m.fs.ro_properties,
-        outlet_property_package=m.fs.properties,
-        has_phase_equilibrium=False,
-        outlet_state_defined=True,
-    )
+    # m.fs.translator_RO_to_ZO = TranslatorNaCltoZO(
+    #     inlet_property_package=m.fs.ro_properties,
+    #     outlet_property_package=m.fs.properties,
+    #     has_phase_equilibrium=False,
+    #     outlet_state_defined=True,
+    # )
 
     # Post-Treatment chemical addition units - ZO Models
     m.fs.post_treat_chem_list = [
-        "calcium_hydroxide",
-        "sodium_hydroxide",
-        "sodium_hypochlorite_post",
+        # "calcium_hydroxide",
+        "caustic",
+        # "sodium_hypochlorite",
         "sodium_bisulfite",
     ]
 
     for chem_name in m.fs.post_treat_chem_list:
-        m.fs.add_component(chem_name + "_addition", FlowsheetBlock(dynamic=False))
-        build_chem_addition(
-            m.fs.find_component(chem_name + "_addition"), chem_name, m.fs.properties
-        )
+        if chem_name == "sodium_hypochlorite":
+            m.fs.add_component(
+                chem_name + "_addition_post", FlowsheetBlock(dynamic=False)
+            )
+            build_chem_addition(
+                m.fs.find_component(chem_name + "_addition_post"),
+                chem_name,
+                m.fs.properties,
+            )
+        else:
+            m.fs.add_component(chem_name + "_addition", FlowsheetBlock(dynamic=False))
+            build_chem_addition(
+                m.fs.find_component(chem_name + "_addition"), chem_name, m.fs.properties
+            )
     # Combined chemical list for operating conditions, scaling, and costing(?)
     m.fs.chemical_list = list(m.fs.pre_treat_chem_list) + list(
         m.fs.post_treat_chem_list
     )
 
-    m.fs.product = Product(property_package=m.fs.properties)
-    m.fs.brine = Product(
-        property_package=m.fs.ro_properties
-    )  # directly from ro, so needs same prop model
+    # m.fs.product = Product(property_package=m.fs.properties)
+    # m.fs.brine = Product(
+    #     property_package=m.fs.ro_properties
+    # )  # directly from ro, so needs same prop model
 
     return m
 
@@ -168,14 +191,14 @@ def add_wrd_connections(m):
             source=m.fs.find_component(
                 m.fs.pre_treat_chem_list[-1] + "_addition"
             ).product.outlet,
-            destination=m.fs.translator_ZO_to_RO.inlet,
+            destination=m.fs.UF_pumps.feed.inlet,
         ),
     )
 
     # Connect RO translator to uf pump
-    m.fs.translator_to_uf_pumps = Arc(
-        source=m.fs.translator_ZO_to_RO.outlet, destination=m.fs.UF_pumps.feed.inlet
-    )
+    # m.fs.translator_to_uf_pumps = Arc(
+    #     source=m.fs.translator_ZO_to_RO.outlet, destination=m.fs.UF_pumps.feed.inlet
+    # )
     # Connect UF Pump to UF
     m.fs.uf_pumps_to_uf = Arc(
         source=m.fs.UF_pumps.product.outlet, destination=m.fs.UF.feed.inlet
@@ -197,10 +220,10 @@ def add_wrd_connections(m):
     )
 
     # Connect Decarbonator to translator
-    m.fs.decarbonator_to_translator = Arc(
-        source=m.fs.decarbonator.product.outlet,
-        destination=m.fs.translator_RO_to_ZO.inlet,
-    )
+    # m.fs.ro_to_translator = Arc(
+    #     source=m.fs.decarbonator.product.outlet,
+    #     destination=m.fs.translator_RO_to_ZO.inlet,
+    # )
 
     # Chain post-treatment chemicals (decarbonator -> post1 -> post2 -> ... -> product)
     for i in range(len(m.fs.post_treat_chem_list)):
@@ -208,9 +231,9 @@ def add_wrd_connections(m):
         if i == 0:
             # Connect decarb to first chemical
             m.fs.add_component(
-                "translator_to_" + chem_name,
+                "decarb_to_" + chem_name,
                 Arc(
-                    source=m.fs.translator_RO_to_ZO.outlet,
+                    source=m.fs.decarbonator.product.outlet,
                     destination=m.fs.find_component(chem_name + "_addition").feed.inlet,
                 ),
             )
@@ -240,41 +263,55 @@ def add_wrd_connections(m):
     # Connect ro waste to brine
     m.fs.ro_waste_to_brine = Arc(
         source=m.fs.ro_system.brine.outlet,
-        destination=m.fs.brine.inlet,
+        destination=m.fs.disposal.inlet,
     )
 
     TransformationFactory("network.expand_arcs").apply_to(m)
 
 
-def set_wrd_inlet_conditions(m):
-    # Inlet conditions
-    number_trains = m.fs.ro_system.number_trains
-    Qin = get_config_value(
-        m.fs.config_data,
-        "feed_flow_water",
-        "feed_stream",
+# def set_wrd_inlet_conditions(m):
+#     # Inlet conditions
+#     number_trains = m.fs.ro_system.number_trains
+#     Qin = get_config_value(
+#         m.fs.config_data,
+#         "feed_flow_water",
+#         "feed_stream",
+#     )
+
+#     Cin = get_config_value(
+#         m.fs.config_data, "feed_conductivity", "feed_stream"
+#     ) * get_config_value(
+#         m.fs.config_data, "feed_conductivity_conversion", "feed_stream"
+#     )
+
+#     # Would like to load Pin and Tin as well once property model is changed.
+
+#     rho = 1000 * pyunits.kg / pyunits.m**3  # Approximate density of water
+#     feed_mass_flow_water = Qin * rho
+#     feed_mass_flow_salt = Cin * Qin
+
+#     m.fs.feed.properties[0].flow_mass_comp["H2O"].fix(
+#         number_trains * feed_mass_flow_water
+#     )  # Fix feed water flow rate
+#     # Not sure this is correct way to translate salinate to tds and tss
+#     m.fs.feed.properties[0].flow_mass_comp["tds"].fix(
+#         feed_mass_flow_salt
+#     )  # Fix feed salt flow rate
+#     # Does not seem to like tss being 0
+#     # m.fs.feed.properties[0].flow_mass_comp["tss"].fix(0)  # Fix feed salt flow rate
+
+
+def set_inlet_conditions(m, Qin=2637, Cin=0.5, file="wrd_ro_inputs_8_19_21.yaml"):
+
+    m.fs.feed.properties.calculate_state(
+        var_args={
+            ("flow_vol_phase", ("Liq")): Qin * pyunits.gallons / pyunits.minute,
+            ("conc_mass_phase_comp", ("Liq", "NaCl")): Cin * pyunits.g / pyunits.L,
+            ("pressure", None): 101325,
+            ("temperature", None): 273.15 + 27,
+        },
+        hold_state=True,
     )
-    Cin = get_config_value(
-        m.fs.config_data, "feed_conductivity", "feed_stream"
-    ) * get_config_value(
-        m.fs.config_data, "feed_conductivity_conversion", "feed_stream"
-    )
-
-    # Would like to load Pin and Tin as well once property model is changed.
-
-    rho = 1000 * pyunits.kg / pyunits.m**3  # Approximate density of water
-    feed_mass_flow_water = Qin * rho
-    feed_mass_flow_salt = Cin * Qin
-
-    m.fs.feed.properties[0].flow_mass_comp["H2O"].fix(
-        number_trains * feed_mass_flow_water
-    )  # Fix feed water flow rate
-    # Not sure this is correct way to translate salinate to tds and tss
-    m.fs.feed.properties[0].flow_mass_comp["tds"].fix(
-        feed_mass_flow_salt
-    )  # Fix feed salt flow rate
-    # Does not seem to like tss being 0
-    m.fs.feed.properties[0].flow_mass_comp["tss"].fix(0)  # Fix feed salt flow rate
 
 
 def set_wrd_operating_conditions(m):
@@ -283,10 +320,11 @@ def set_wrd_operating_conditions(m):
         set_chem_addition_op_conditions(
             blk=m.fs.find_component(chem_name + "_addition")
         )
-    set_UF_pumps_op_conditions(m.fs.UF_pumps)
+    # set_UF_op_conditions(m.fs.UF)
     uf_splits = {
         "to_RO": {"H2O": 0.99, "NaCl": 0.99},
     }
+    set_UF_pumps_op_conditions(m.fs.UF_pumps)
     set_separator_op_conditions(m.fs.UF, split_fractions=uf_splits)
     set_ro_system_op_conditions(m.fs.ro_system)
     set_uv_aop_op_conditions(m.fs.UV_aop)
@@ -295,17 +333,18 @@ def set_wrd_operating_conditions(m):
 
 def set_wrd_system_scaling(m):
     # Properties Scaling
-    m.fs.ro_properties.set_default_scaling(
+    m.fs.properties.set_default_scaling(
         "flow_mass_phase_comp", 1e-1, index=("Liq", "H2O")
     )
-    m.fs.ro_properties.set_default_scaling(
+    m.fs.properties.set_default_scaling(
         "flow_mass_phase_comp", 1e2, index=("Liq", "NaCl")
     )
     # Does ZO property block also require scaling?
-    for chem_name in m.fs.chemical_list:
-        set_chem_addition_scaling(blk=m.fs.find_component(chem_name + "_addition"))
+    # for chem_name in m.fs.chemical_list:
+    #     set_chem_addition_scaling(blk=m.fs.find_component(chem_name + "_addition"))
 
-    add_UF_pump_scaling(m.fs.UF_pumps)
+    # add_UF_pump_scaling(m.fs.UF_pumps)
+    add_pump_scaling(m.fs.UF_pumps)
     # add_separator_scaling(m.fs.UF) # Nothing to scale?
     add_ro_scaling(m.fs.ro_system)
     add_uv_aop_scaling(m.fs.UV_aop)
@@ -322,7 +361,7 @@ def initialize_wrd_system(m):
             prev = m.fs.pre_treat_chem_list[i - 1]
             propagate_state(m.fs.find_component(prev + "_to_" + chem_name))
 
-        init_chem_addition(m.fs.find_component(chem_name + "_addition"))
+        initialize_chem_addition(m.fs.find_component(chem_name + "_addition"))
 
     # propagate from last pre-UF chemical to UF
     propagate_state(
@@ -339,28 +378,24 @@ def initialize_wrd_system(m):
 
     propagate_state(m.fs.UF_to_ro)
     initialize_ro_system(m.fs.ro_system)
-    # Brine
-    propagate_state(m.fs.ro_waste_to_brine)
-    m.fs.brine.initialize()
-    # Permeate
     propagate_state(m.fs.ro_to_uv)
     initialize_uv_aop(m.fs.UV_aop)
     propagate_state(m.fs.uv_to_decarbonator)
     initialize_decarbonator(m.fs.decarbonator)
-    propagate_state(m.fs.decarbonator_to_translator)
-    m.fs.translator_RO_to_ZO.initialize()  # Permeate pressure drops out
 
     # Initialize post-treatment chemical chain (downstream of decarbonator)
     for i, chem_name in enumerate(m.fs.post_treat_chem_list):
         if i == 0:
-            propagate_state(m.fs.find_component("translator_to_" + chem_name))
+            propagate_state(m.fs.find_component("decarb_to_" + chem_name))
         else:
             prev = m.fs.post_treat_chem_list[i - 1]
             propagate_state(m.fs.find_component(prev + "_to_" + chem_name))
-        init_chem_addition(m.fs.find_component(chem_name + "_addition"))
+        initialize_chem_addition(m.fs.find_component(chem_name + "_addition"))
 
     propagate_state(m.fs.find_component(m.fs.post_treat_chem_list[-1] + "_to_product"))
     m.fs.product.initialize()
+    propagate_state(m.fs.ro_waste_to_brine)
+    m.fs.brine.initialize()
 
 
 def solve(model, solver=None, tee=True, raise_on_failure=True):
@@ -386,32 +421,29 @@ def solve(model, solver=None, tee=True, raise_on_failure=True):
 
 def main(number_stages=3, date="8_19_21"):
     m = build_wrd_system(number_stages=number_stages, date=date)
-    assert_units_consistent(m)
+    # assert_units_consistent(m)
     add_wrd_connections(m)
-    print(f"{degrees_of_freedom(m)} degrees of freedom after build")
-    set_wrd_inlet_conditions(m)
-    set_wrd_operating_conditions(m)
-    print(f"{degrees_of_freedom(m)} degrees of freedom after setting op conditions")
+    # print(f"{degrees_of_freedom(m)} degrees of freedom after build")
     set_wrd_system_scaling(m)
     calculate_scaling_factors(m)
-    initialize_wrd_system(m)
-    # from wrd.components.ro_system import report_ro_system
-    # report_ro_system(m.fs.ro_system)
-    # from wrd.components.UF_separator import report_separator
-    # report_separator(m.fs.UF.unit)
-    try:
-        results = solve(m)
-        assert_optimal_termination(results)
-    except:
-        print_infeasible_constraints(m)
-        print("\n--------- Failed to Solve ---------\n")
+    set_inlet_conditions(m)
+    # set_wrd_operating_conditions(m)
+    # print(f"{degrees_of_freedom(m)} degrees of freedom after setting op conditions")
+
+    # initialize_wrd_system(m)
+    # try:
+    #     results = solve(m)
+    #     assert_optimal_termination(results)
+    # except:
+    #     print_infeasible_constraints(m)
+    #     print("\n--------- Failed to Solve ---------\n")
     return m
 
 
 if __name__ == "__main__":
     number_stages = 3
     date = "8_19_21"
-    main(number_stages=number_stages, date=date)
+    m = main(number_stages=number_stages, date=date)
     # m = build_wrd_system(number_stages=number_stages, date=date)
     # add_connections(m)
     # set_wrd_inlet_conditions(m)
