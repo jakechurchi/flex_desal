@@ -1,7 +1,5 @@
 from pyomo.environ import (
     ConcreteModel,
-    Expression,
-    value,
     assert_optimal_termination,
     units as pyunits,
     value,
@@ -16,8 +14,6 @@ from idaes.core import FlowsheetBlock
 from idaes.models.unit_models import (
     Feed,
     Product,
-    MomentumMixingType,
-    Mixer,
     StateJunction,
 )
 from idaes.core.util.scaling import calculate_scaling_factors
@@ -187,7 +183,7 @@ def add_uf_train_costing(blk, costing_package=None):
     # add_separator_costing(blk.ro,costing_package=costing_package) # Don't think there's anything to cost here required
 
 
-def report_uf_train(blk, train_num=None, w=30):
+def report_uf_train(blk, train_num=0, w=30):
     title = f"UF Train {train_num} Report"
     side = int(((3 * w) - len(title)) / 2) - 1
     header = "=" * side + f" {title} " + "=" * side
