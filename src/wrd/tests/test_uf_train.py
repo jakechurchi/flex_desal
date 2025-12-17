@@ -1,5 +1,5 @@
 import pytest
-from wrd.components.uf_train import main
+from wrd.components.UF_train import main
 
 
 @pytest.mark.component

@@ -28,7 +28,7 @@ from watertap.core.util.model_diagnostics.infeasible import *
 from watertap.property_models.NaCl_T_dep_prop_pack import NaClParameterBlock
 from watertap.core.solvers import get_solver
 
-from wrd.components.uf_train import *
+from wrd.components.UF_train import *
 from wrd.components.pump import report_pump
 from srp.utils import touch_flow_and_conc
 
