@@ -74,7 +74,7 @@ def build_ro_system(
         outlet_list=outlet_list,
         split_basis=SplittingType.componentFlow,
     )
-    
+
     if split_fractions is None:
         m.fs.ro_feed_separator.even_split = 1.0 / len(outlet_list)
     else:
@@ -94,11 +94,6 @@ def build_ro_system(
         property_package=m.fs.properties,
         momentum_mixing_type=MomentumMixingType.none,
         inlet_list=brine_inlet_list,
-    )
-
-    m.fs.recovery_vol_ro = Expression(
-        expr=(m.fs.product.properties[0].flow_vol_phase["Liq"])
-        / (m.fs.feed.properties[0].flow_vol_phase["Liq"])
     )
 
     for i in m.fs.trains:
@@ -130,12 +125,18 @@ def build_ro_system(
         )
         m.fs.add_component(f"train{i}_to_brine_mix", a)
 
-    m.fs.ro_feed_to_separator = Arc(
-        source=m.fs.feed.outlet,
-        destination=m.fs.ro_feed_separator.inlet,
-    )
 
     if m.standalone:
+        m.fs.recovery_vol_ro = Expression(
+            expr=(m.fs.product.properties[0].flow_vol_phase["Liq"])
+            / (m.fs.feed.properties[0].flow_vol_phase["Liq"])
+        )
+        
+        m.fs.ro_feed_to_separator = Arc(
+            source=m.fs.feed.outlet,
+            destination=m.fs.ro_feed_separator.inlet,
+        )
+
         m.fs.product_mixer_to_product = Arc(
             source=m.fs.ro_product_mixer.outlet,
             destination=m.fs.product.inlet,
@@ -153,6 +154,11 @@ def build_ro_system(
         )
         m.fs.properties.set_default_scaling(
             "flow_mass_phase_comp", 1e2, index=("Liq", "NaCl")
+        )
+    else:
+        m.fs.recovery_vol_ro = Expression(
+            expr=(m.fs.ro_product_mixer.mixed_state[0].flow_vol_phase["Liq"])
+            / (m.fs.ro_feed_separator.mixed_state[0].flow_vol_phase["Liq"])
         )
 
     return m

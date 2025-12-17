@@ -105,11 +105,6 @@ def build_uf_system(
         inlet_list=brine_inlet_list,
     )
 
-    # Could delete this tbh
-    m.fs.recovery_vol_uf = Expression(
-        expr=(m.fs.product.properties[0].flow_vol_phase["Liq"])
-        / (m.fs.feed.properties[0].flow_vol_phase["Liq"])
-    )
 
     for i in m.fs.uf_trains:
         build_uf_train(
@@ -139,12 +134,17 @@ def build_uf_system(
         )
         m.fs.add_component(f"uf{i}_to_disp_mix", a)
 
-    m.fs.uf_feed_to_separator = Arc(
-        source=m.fs.feed.outlet,
-        destination=m.fs.uf_feed_separator.inlet,
-    )
 
     if m.standalone:
+        m.fs.uf_feed_to_separator = Arc(
+            source=m.fs.feed.outlet,
+            destination=m.fs.uf_feed_separator.inlet,
+        )
+
+        m.fs.recovery_vol_uf = Expression(
+            expr=(m.fs.product.properties[0].flow_vol_phase["Liq"])
+            / (m.fs.feed.properties[0].flow_vol_phase["Liq"])
+        )
         m.fs.uf_product_mixer_to_product = Arc(
             source=m.fs.uf_product_mixer.outlet,
             destination=m.fs.product.inlet,
@@ -163,6 +163,12 @@ def build_uf_system(
         m.fs.properties.set_default_scaling(
             "flow_mass_phase_comp", 1e2, index=("Liq", "NaCl")
         )
+    else:
+        m.fs.recovery_vol_uf = Expression(
+            expr=(m.fs.uf_product_mixer.mixed_state[0].flow_vol_phase["Liq"])
+            / (m.fs.uf_feed_separator.mixed_state[0].flow_vol_phase["Liq"])
+        )
+
 
     return m
 
@@ -321,3 +327,4 @@ def main(add_costing=False):
 
 if __name__ == "__main__":
     m = main(add_costing=True)
+    # m.fs.uf_feed_separator.display()
