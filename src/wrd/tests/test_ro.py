@@ -1,13 +1,13 @@
 import pytest
-from pyomo.environ import value, units as pyunits
-from pyomo.util.check_units import assert_units_consistent
-from wrd.components.ro import main, default_ro_config
+
 from watertap.unit_models.reverse_osmosis_1D import (
     ReverseOsmosis1D,
     PressureChangeType,
     MassTransferCoefficient,
     ConcentrationPolarizationType,
 )
+
+from wrd.components.ro import main, default_ro_config
 
 test_default_ro_config = dict(
     has_pressure_change=True,
@@ -31,9 +31,3 @@ def test_ro_main():
 @pytest.mark.component
 def test_ro_default_config():
     assert len(default_ro_config) == len(test_default_ro_config)
-
-
-import pprint
-
-pprint.pprint(default_ro_config)
-pprint.pprint(test_default_ro_config)
