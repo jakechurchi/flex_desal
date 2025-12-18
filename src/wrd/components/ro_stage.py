@@ -95,7 +95,7 @@ def set_inlet_conditions(m, Qin=2637, Cin=0.5, Tin=298, Pin=101325):
     )
 
 
-def set_ro_stage_op_conditions(blk): 
+def set_ro_stage_op_conditions(blk):
 
     set_pump_op_conditions(blk.pump)
     set_ro_op_conditions(blk.ro)

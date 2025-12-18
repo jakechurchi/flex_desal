@@ -84,7 +84,7 @@ def build_ro_system(
 
     m.fs.ro_product_mixer = Mixer(
         property_package=m.fs.properties,
-        momentum_mixing_type = MomentumMixingType.none,
+        momentum_mixing_type=MomentumMixingType.none,
         inlet_list=perm_inlet_list,
     )
 
@@ -205,6 +205,7 @@ def set_ro_system_op_conditions(m):
             )
     m.fs.ro_product_mixer.outlet.pressure[0].fix(101325)
 
+
 def initialize_ro_system(m):
 
     if m.standalone:
@@ -226,7 +227,7 @@ def initialize_ro_system(m):
 
     m.fs.ro_product_mixer.initialize()
     m.fs.ro_brine_mixer.initialize()
-    
+
     if m.standalone:
         propagate_state(m.fs.product_mixer_to_product)
         m.fs.product.initialize()

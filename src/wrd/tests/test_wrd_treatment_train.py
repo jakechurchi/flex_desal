@@ -16,13 +16,16 @@ from wrd.utilities import load_config, get_config_value, get_config_file
 #     perm_flow = stage.mixed_permeate[0].flow_vol_phase["Liq"]
 #     return pump, perm_flow
 
+
 @pytest.mark.component
 def test_with_1_train():
-    m = main(num_pro_trains = 1, num_tsro_trains = 1, num_pro_stages=2)
+    m = main(num_pro_trains=1, num_tsro_trains=1, num_pro_stages=2)
+
 
 @pytest.mark.component
 def test_with_4_train():
-    m = main(num_pro_trains = 4, num_tsro_trains = 4, num_pro_stages=2)
+    m = main(num_pro_trains=4, num_tsro_trains=4, num_pro_stages=2)
+
 
 # Current test only checks first strage of first train pump power
 @pytest.mark.skip

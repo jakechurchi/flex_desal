@@ -285,7 +285,7 @@ def add_wrd_connections(m):
     TransformationFactory("network.expand_arcs").apply_to(m)
 
 
-def set_inlet_conditions(m, Qin=2637*4, Cin=0.5, file="wrd_ro_inputs_8_19_21.yaml"):
+def set_inlet_conditions(m, Qin=2637 * 4, Cin=0.5, file="wrd_ro_inputs_8_19_21.yaml"):
 
     m.fs.feed.properties.calculate_state(
         var_args={
@@ -308,8 +308,8 @@ def set_wrd_operating_conditions(m):
         )
         if chem_name == "sodium_hypochlorite":
             set_chem_addition_op_conditions(
-            blk=m.fs.find_component(chem_name + "_addition_post"), dose=0.1
-        )
+                blk=m.fs.find_component(chem_name + "_addition_post"), dose=0.1
+            )
     print(degrees_of_freedom(m))
     set_uf_system_op_conditions(m)
     print(degrees_of_freedom(m))
@@ -337,12 +337,10 @@ def set_wrd_operating_conditions(m):
     set_decarbonator_op_conditions(m.fs.decarbonator)
     print(degrees_of_freedom(m))
 
-    # m.fs.tsro_product_mixer.outlet.pressure[0].fix(101325) #Removed mixer  
+    # m.fs.tsro_product_mixer.outlet.pressure[0].fix(101325) #Removed mixer
     m.fs.ro_system_product_mixer.outlet.pressure[0].fix(101325)
     m.fs.tsro_brine_mixer.outlet.pressure[0].fix(101325)
     m.fs.disposal_mixer.outlet.pressure[0].fix(101325)
-
-    
 
 
 def set_wrd_system_scaling(m):
@@ -379,9 +377,9 @@ def initialize_wrd_system(m):
             initialize_chem_addition(unit)
         prev = chem_name
 
-    propagate_state(m.fs.pre_chem_to_uf_system) #separator inside uf system
+    propagate_state(m.fs.pre_chem_to_uf_system)  # separator inside uf system
     initialize_uf_system(m)
-    
+
     m.fs.uf_disposal_mixer.initialize()
     propagate_state(m.fs.uf_disposal_to_disposal_mixer)
 
@@ -404,7 +402,7 @@ def initialize_wrd_system(m):
         propagate_state(a)
 
     m.fs.tsro_brine_mixer.initialize()
-    propagate_state(m.fs.tsro_brine_mixer_to_disposal) # This mixer could be removed?
+    propagate_state(m.fs.tsro_brine_mixer_to_disposal)  # This mixer could be removed?
 
     m.fs.ro_system_product_mixer.initialize()
     propagate_state(m.fs.ro_system_product_mixer_to_uv)
@@ -441,7 +439,7 @@ def initialize_wrd_system(m):
 
 
 def report_sj(sj, w=25):
-    #sj = state junction
+    # sj = state junction
     title = sj.name.replace("fs.", "").replace("_", " ").upper()
 
     side = int(((3 * w) - len(title)) / 2) - 1
@@ -597,6 +595,7 @@ def report_tsro(m, w=30):
         report_pump(tsro_stage.pump)
         report_ro(tsro_stage.ro, w=w)
 
+
 def report_wrd(m, w=30):
 
     feed_flow = pyunits.convert(
@@ -658,10 +657,10 @@ def report_wrd(m, w=30):
     report_ro_system(m, w=w)
     report_mixer(m.fs.ro_brine_mixer)
     report_sj(m.fs.tsro_header)
-    report_tsro(m,w=w)
+    report_tsro(m, w=w)
 
 
-def main(num_pro_trains = 1, num_tsro_trains = 1, num_pro_stages=2):
+def main(num_pro_trains=1, num_tsro_trains=1, num_pro_stages=2):
     m = build_wrd_system(
         num_pro_trains=num_pro_trains,
         num_tsro_trains=num_tsro_trains,
@@ -669,7 +668,7 @@ def main(num_pro_trains = 1, num_tsro_trains = 1, num_pro_stages=2):
     )
     add_wrd_connections(m)
     print(f"{degrees_of_freedom(m)} degrees of freedom after build")
-    set_inlet_conditions(m,Qin=2637*num_pro_trains)
+    set_inlet_conditions(m, Qin=2637 * num_pro_trains)
     set_wrd_operating_conditions(m)
     print(f"{degrees_of_freedom(m)} degrees of freedom after setting op conditions")
     set_wrd_system_scaling(m)
