@@ -197,7 +197,6 @@ def set_pump_op_conditions(blk):
     Pout = get_config_value(
         blk.config_data, "pump_outlet_pressure", "pumps", f"pump_{blk.stage_num}"
     )
-
     print(
         f"Setting pump {blk.stage_num} operating conditions, Pout = {value(Pout)} psi"
     )

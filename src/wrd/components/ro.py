@@ -255,7 +255,7 @@ def set_ro_op_conditions(blk):
             f"stage_{blk.stage_num}",
         )
     )
-
+    
     blk.unit.deltaP.fix(
         get_config_value(
             blk.config_data,
@@ -265,7 +265,7 @@ def set_ro_op_conditions(blk):
         )
     )
 
-    blk.unit.recovery_vol_phase[0, "Liq"].set_value(
+    blk.unit.recovery_vol_phase[0, "Liq"].set_value( # Note this is unfixed!
         get_config_value(
             blk.config_data,
             "water_recovery_mass_phase",
