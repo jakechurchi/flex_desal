@@ -9,7 +9,7 @@ from pyomo.environ import (
     value,
     TransformationFactory,
 )
-
+from idaes.core.util.model_diagnostics import DiagnosticsToolbox
 import pyomo.contrib.parmest.parmest as parmest
 from pyomo.contrib.parmest.experiment import Experiment
 
@@ -212,7 +212,7 @@ def add_wrd_connections(m):
             source=m.fs.tsro_feed_separator.find_component(f"to_tsro{t}"),
             destination=m.fs.tsro_train[t].feed.inlet,
         )
-        m.fs.add_component(f"tsro_header_to_tsro{t}", a)
+        m.fs.add_component(f"tsro_separator_to_tsro{t}", a)
         a = Arc(
             source=m.fs.tsro_train[t].product.outlet,
             destination=m.fs.ro_system_product_mixer.find_component(
@@ -249,7 +249,10 @@ def add_wrd_connections(m):
 
     # Chain post-treatment chemicals (decarbonator -> post1 -> post2 -> ... -> product)
     for i, chem_name in enumerate(m.fs.post_treat_chem_list):
-        unit = m.fs.find_component(f"{chem_name}_addition")
+        if chem_name == "sodium_hypochlorite":
+            unit = m.fs.find_component(chem_name + "_addition_post")
+        else:
+            unit = m.fs.find_component(f"{chem_name}_addition")
         if i == 0:
             # Connect decarb to first chemical
             a = Arc(
@@ -376,23 +379,23 @@ def initialize_wrd_system(m):
             initialize_chem_addition(unit)
         prev = chem_name
 
-    propagate_state(m.fs.pre_chem_to_uf_system)
+    propagate_state(m.fs.pre_chem_to_uf_system) #separator inside uf system
     initialize_uf_system(m)
+    
+    m.fs.uf_disposal_mixer.initialize()
+    propagate_state(m.fs.uf_disposal_to_disposal_mixer)
+
     propagate_state(m.fs.uf_system_to_pro)
     initialize_ro_system(m)
 
-    # propagate_state(m.fs.ro_to_product)
-    # m.fs.product.initialize()
-    # propagate_state(m.fs.ro_to_disposal)
-    
     propagate_state(m.fs.pro_to_ro_system_product_mixer)
-    # propagate_state(m.fs.pro_to_disposal_mixer)
+    #
     propagate_state(m.fs.pro_to_tsro_header)
     m.fs.tsro_header.initialize()
     propagate_state(m.fs.tsro_header_to_tsro_separator)
     m.fs.tsro_feed_separator.initialize()
     for t in m.fs.tsro_trains:
-        a = m.fs.find_component(f"tsro_header_to_tsro{t}")
+        a = m.fs.find_component(f"tsro_separator_to_tsro{t}")
         propagate_state(a)
         initialize_ro_stage(m.fs.tsro_train[t])
         a = m.fs.find_component(f"tsro{t}_to_ro_product")
@@ -402,9 +405,6 @@ def initialize_wrd_system(m):
 
     m.fs.tsro_brine_mixer.initialize()
     propagate_state(m.fs.tsro_brine_mixer_to_disposal) # This mixer could be removed?
-
-    m.fs.uf_disposal_mixer.initialize()
-    propagate_state(m.fs.uf_disposal_to_disposal_mixer)
 
     m.fs.ro_system_product_mixer.initialize()
     propagate_state(m.fs.ro_system_product_mixer_to_uv)
@@ -593,7 +593,7 @@ def report_tsro(m, w=30):
     header = "=" * side + f" {title} " + "=" * side
     print(f"\n{header}\n")
     for t in m.fs.tsro_trains:
-        tsro_stage = m.fs.m.fs.sro_train[t]
+        tsro_stage = m.fs.tsro_train[t]
         report_pump(tsro_stage.pump)
         report_ro(tsro_stage.ro, w=w)
 
@@ -661,11 +661,11 @@ def report_wrd(m, w=30):
     report_tsro(m,w=w)
 
 
-def main(num_pro_trains=4, num_tsro_trains=4, num_stages=2):
+def main(num_pro_trains = 1, num_tsro_trains = 1, num_pro_stages=2):
     m = build_wrd_system(
         num_pro_trains=num_pro_trains,
         num_tsro_trains=num_tsro_trains,
-        num_stages=num_stages,
+        num_stages=num_pro_stages,
     )
     add_wrd_connections(m)
     print(f"{degrees_of_freedom(m)} degrees of freedom after build")
@@ -675,6 +675,7 @@ def main(num_pro_trains=4, num_tsro_trains=4, num_stages=2):
     set_wrd_system_scaling(m)
     calculate_scaling_factors(m)
     assert degrees_of_freedom(m) == 0
+    dt = DiagnosticsToolbox(m)
     initialize_wrd_system(m)
     # try:
     #     results = solve(m)

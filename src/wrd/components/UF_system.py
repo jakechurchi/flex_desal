@@ -93,7 +93,7 @@ def build_uf_system(
 
     m.fs.uf_product_mixer = Mixer(
         property_package=m.fs.properties,
-        momentum_mixing_type=MomentumMixingType.none,
+        momentum_mixing_type=MomentumMixingType.minimize,
         inlet_list=perm_inlet_list,
     )
 
@@ -211,7 +211,7 @@ def set_uf_system_op_conditions(m):
                 m.fs.uf_feed_separator.even_split
             )
 
-    m.fs.uf_product_mixer.outlet.pressure[0].fix(101325)
+    # m.fs.uf_product_mixer.outlet.pressure[0].fix(101325)
     m.fs.uf_disposal_mixer.outlet.pressure[0].fix(101325)
 
 
