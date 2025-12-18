@@ -22,19 +22,17 @@ from watertap.property_models.NaCl_T_dep_prop_pack import NaClParameterBlock
 from wrd.components.chemical_addition import *
 from wrd.components.ro_system import *
 
-# from wrd.components.ro_system_new import build_ro_system
 from wrd.components.decarbonator import *
 from wrd.components.uv_aop import *
-
-# from wrd.components.UF_feed_pumps import *
 from wrd.components.pump import *
 from wrd.components.UF_system import *
 from wrd.components.ro_system import *
 from wrd.components.ro_stage import *
 from wrd.components.ro import report_ro
 from wrd.components.chemical_addition import *
-from wrd.utilities import load_config, get_config_file, get_config_value
+from wrd.utilities import *
 from srp.utils import touch_flow_and_conc
+from models import HeadLoss
 
 
 def build_wrd_system(num_pro_trains=4, num_tsro_trains=None, num_stages=2):
@@ -80,6 +78,7 @@ def build_wrd_system(num_pro_trains=4, num_tsro_trains=None, num_stages=2):
     # TSRO System
     m.fs.tsro_trains = Set(initialize=range(1, num_tsro_trains + 1))
     m.fs.tsro_header = StateJunction(property_package=m.fs.properties)
+    # m.fs.tsro_header = HeadLoss(property_package=m.fs.properties)
     touch_flow_and_conc(m.fs.tsro_header)
     m.fs.tsro_feed_separator = Separator(
         property_package=m.fs.properties,
@@ -337,6 +336,7 @@ def set_wrd_operating_conditions(m):
     set_decarbonator_op_conditions(m.fs.decarbonator)
     print(degrees_of_freedom(m))
 
+    # m.fs.tsro_header.control_volume.deltaP[0].fix(-40* pyunits.psi)
     # m.fs.tsro_product_mixer.outlet.pressure[0].fix(101325) #Removed mixer
     m.fs.ro_system_product_mixer.outlet.pressure[0].fix(101325)
     m.fs.tsro_brine_mixer.outlet.pressure[0].fix(101325)
@@ -383,15 +383,18 @@ def initialize_wrd_system(m):
     m.fs.uf_disposal_mixer.initialize()
     propagate_state(m.fs.uf_disposal_to_disposal_mixer)
 
+
     propagate_state(m.fs.uf_system_to_pro)
     initialize_ro_system(m)
 
     propagate_state(m.fs.pro_to_ro_system_product_mixer)
     #
     propagate_state(m.fs.pro_to_tsro_header)
+
     m.fs.tsro_header.initialize()
     propagate_state(m.fs.tsro_header_to_tsro_separator)
     m.fs.tsro_feed_separator.initialize()
+
     for t in m.fs.tsro_trains:
         a = m.fs.find_component(f"tsro_separator_to_tsro{t}")
         propagate_state(a)
@@ -418,7 +421,6 @@ def initialize_wrd_system(m):
         if i == 0:
             # Connect decarb to first chemical
             a = m.fs.find_component(f"decarb_to_{chem_name}")
-            # m.fs.add_component("decarb_to_" + chem_name, a)
             propagate_state(a)
             initialize_chem_addition(unit)
         else:
@@ -427,9 +429,6 @@ def initialize_wrd_system(m):
             initialize_chem_addition(unit)
         prev = chem_name
     propagate_state(m.fs.post_chem_to_product)
-    # m.fs.post_chem_to_product = Arc(
-    #     source=last_chem.product.outlet, destination=m.fs.product.inlet
-    # )
     m.fs.product.initialize()
 
     m.fs.disposal_mixer.initialize()
@@ -459,20 +458,6 @@ def report_sj(sj, w=25):
     )
     print(f'{"INLET/OUTLET Flow":<{w}s}{f"{flow_in:<{w},.1f}"}{"gpm":<{w}s}')
     print(f'{"INLET/OUTLET NaCl":<{w}s}{f"{conc_in:<{w},.1f}"}{"mg/L":<{w}s}')
-    # flow_out = value(
-    #     pyunits.convert(
-    #         sj.outlet[0].flow_vol_phase["Liq"],
-    #         to_units=pyunits.gallons / pyunits.minute,
-    #     )
-    # )
-    # conc_out = value(
-    #     pyunits.convert(
-    #         sj.outlet[0].conc_mass_phase_comp["Liq", "NaCl"],
-    #         to_units=pyunits.mg / pyunits.L,
-    #     )
-    # )
-    # print(f'{"OUTLET Flow":<{w}s}{f"{flow_out:<{w},.1f}"}{"gpm":<{w}s}')
-    # print(f'{"OUTLET NaCl":<{w}s}{f"{conc_out:<{w},.1f}"}{"mg/L":<{w}s}')
 
 
 def report_mixer(mixer, w=25):
@@ -657,7 +642,28 @@ def report_wrd(m, w=30):
     report_ro_system(m, w=w)
     report_mixer(m.fs.ro_brine_mixer)
     report_sj(m.fs.tsro_header)
-    report_tsro(m, w=w)
+    for t in m.fs.tsro_trains:
+        print(t)
+        report_ro_stage(m.fs.tsro_train[t])
+
+    report_mixer(m.fs.tsro_brine_mixer)
+    report_mixer(m.fs.uf_disposal_mixer)
+    report_mixer(m.fs.ro_system_product_mixer)
+    report_mixer(m.fs.disposal_mixer)
+    report_uv(m.fs.UV_aop)
+    report_decarbonator(m.fs.decarbonator)
+
+    for t in m.fs.tsro_trains:
+        print(t)
+        report_ro_stage(m.fs.tsro_train[t])
+
+    report_mixer(m.fs.tsro_brine_mixer)
+
+    report_mixer(m.fs.uf_disposal_mixer)
+    report_mixer(m.fs.ro_system_product_mixer)
+    report_mixer(m.fs.disposal_mixer)
+    report_uv(m.fs.UV_aop)
+    report_decarbonator(m.fs.decarbonator)
 
 
 def main(num_pro_trains=1, num_tsro_trains=1, num_pro_stages=2):
