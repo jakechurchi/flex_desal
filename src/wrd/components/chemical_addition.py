@@ -163,12 +163,17 @@ def set_chem_addition_op_conditions(blk, dose=None):
 
 def report_chem_addition(blk, w=30):
     chem_name = blk.unit.config.chemical.replace("_", " ").title()
+    feed_flow = pyunits.convert(
+        blk.unit.properties[0].flow_vol_phase["Liq"],
+        to_units=pyunits.gallon / pyunits.min,
+    )
     title = f"{chem_name} Addition Report"
     side = int(((3 * w) - len(title)) / 2) - 1
     header = "=" * side + f" {title} " + "=" * side
     print(f"\n{header}\n")
     print(f'{"Parameter":<{w}s}{"Value":<{w}s}{"Units":<{w}s}')
     print(f"{'-' * (3 * w)}")
+    print(f'{f"Inlet Flow":<{w}s}{f"{value(feed_flow):<{w}.2f}gpm"}')
     print(
         f'{f"{chem_name} Dose":<{w}s}{f"{value(pyunits.convert(blk.unit.dose, to_units=pyunits.mg/pyunits.liter)):<{w}.2f}mg/L"}'
     )
