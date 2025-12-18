@@ -146,9 +146,7 @@ def build_wrd_system(num_pro_trains=4, num_tsro_trains=None, num_stages=2):
                 m.fs.find_component(chem_name + "_addition"), chem_name, m.fs.properties
             )
     # Combined chemical list for operating conditions, scaling, and costing(?)
-    m.fs.chemical_list = list(m.fs.pre_treat_chem_list) + list(
-        m.fs.post_treat_chem_list
-    )
+    m.fs.chemical_list = m.fs.pre_treat_chem_list + m.fs.post_treat_chem_list
 
     # Products and Disposal
     m.fs.disposal_mixer = Mixer(
@@ -162,12 +160,17 @@ def build_wrd_system(num_pro_trains=4, num_tsro_trains=None, num_stages=2):
     m.fs.disposal = Product(property_package=m.fs.properties)
     touch_flow_and_conc(m.fs.disposal)
 
+    m.fs.system_recovery = Expression(
+        expr=m.fs.product.properties[0].flow_vol_phase["Liq"]
+        / m.fs.feed.properties[0].flow_vol_phase["Liq"]
+    )
+
     return m
 
 
 def add_wrd_connections(m):
     # Connect pre-UF chemical chain: feed -> chem1 -> chem2 -> ... -> UF
-    for i, chem_name in enumerate((m.fs.pre_treat_chem_list)):
+    for i, chem_name in enumerate(m.fs.pre_treat_chem_list):
         unit = m.fs.find_component(chem_name + "_addition")
         if i == 0:
             a = Arc(
@@ -177,21 +180,22 @@ def add_wrd_connections(m):
             m.fs.add_component(f"feed_to_{chem_name}", a)
         else:
             # Connect each chemical to the next
-            prev = m.fs.pre_treat_chem_list[i - 1]
-            prev_unit = m.fs.find_component(prev + "_addition")
+            prev_unit = m.fs.find_component(f"{prev}_addition")
             a = Arc(
                 source=prev_unit.product.outlet,
                 destination=unit.feed.inlet,
             )
             m.fs.add_component(f"{prev}_to_{chem_name}", a)
+        prev = chem_name
 
-    last_chem = m.fs.find_component(m.fs.pre_treat_chem_list[-1] + "_addition")
+    last_chem = m.fs.find_component(f"{prev}_addition")
     m.fs.pre_chem_to_uf_system = Arc(
         source=last_chem.product.outlet, destination=m.fs.uf_feed_separator.inlet
     )
     m.fs.uf_system_to_pro = Arc(
         source=m.fs.uf_product_mixer.outlet, destination=m.fs.ro_feed_separator.inlet
     )
+    #####
     m.fs.pro_to_tsro_header = Arc(
         source=m.fs.ro_brine_mixer.outlet, destination=m.fs.tsro_header.inlet
     )
@@ -201,10 +205,6 @@ def add_wrd_connections(m):
     m.fs.pro_to_ro_system_product_mixer = Arc(
         source=m.fs.ro_product_mixer.outlet,
         destination=m.fs.ro_system_product_mixer.from_pro_product,
-    )
-    m.fs.pro_to_disposal_mixer = Arc(
-        source=m.fs.ro_brine_mixer.outlet,
-        destination=m.fs.disposal_mixer.from_pro_brine,
     )
     for t in m.fs.tsro_trains:
         a = Arc(
@@ -219,13 +219,7 @@ def add_wrd_connections(m):
             ),
         )
         m.fs.add_component(f"tsro{t}_to_ro_product", a)
-        # m.fs.add_component(
-        #     f"tsro{t}_to_product",
-        #     Arc(
-        #         source=m.fs.tsro_train[t].permeate.outlet,
-        #         destination=m.fs.tsro_product_mixer.find_component("tsro" + str(t) + "_to_product").inlet,
-        #     ),
-        # )
+
         a = Arc(
             source=m.fs.tsro_train[t].disposal.outlet,
             destination=m.fs.tsro_brine_mixer.find_component(f"tsro{t}_to_brine"),
@@ -240,6 +234,10 @@ def add_wrd_connections(m):
         source=m.fs.uf_disposal_mixer.outlet,
         destination=m.fs.disposal_mixer.from_uf_disposal,
     )
+    m.fs.pro_to_disposal_mixer = Arc(
+        source=m.fs.ro_brine_mixer.outlet,
+        destination=m.fs.disposal_mixer.from_pro_brine,
+    )
     m.fs.ro_system_product_mixer_to_uv = Arc(
         source=m.fs.ro_system_product_mixer.outlet, destination=m.fs.UV_aop.feed.inlet
     )
@@ -248,37 +246,44 @@ def add_wrd_connections(m):
     )
 
     # Chain post-treatment chemicals (decarbonator -> post1 -> post2 -> ... -> product)
-    for i, chem_name in enumerate((m.fs.post_treat_chem_list)):
-        unit = m.fs.find_component(chem_name + "_addition")
+    for i, chem_name in enumerate(m.fs.post_treat_chem_list):
+        unit = m.fs.find_component(f"{chem_name}_addition")
         if i == 0:
             # Connect decarb to first chemical
             a = Arc(
                 source=m.fs.decarbonator.product.outlet,
                 destination=unit.feed.inlet,
             )
-            m.fs.add_component("decarb_to_" + chem_name, a)
+            m.fs.add_component(f"decarb_to_{chem_name}", a)
         else:
             # Connect each chemical to the next
-            prev = m.fs.post_treat_chem_list[i - 1]
-            prev_unit = m.fs.find_component(prev + "_addition")
+            prev_unit = m.fs.find_component(f"{prev}_addition")
             a = Arc(
                 source=prev_unit.product.outlet,
                 destination=unit.feed.inlet,
             )
             m.fs.add_component(f"{prev}_to_{chem_name}", a)
+        prev = chem_name
 
-    last_chem = m.fs.find_component(m.fs.post_treat_chem_list[-1] + "_addition")
+    last_chem = m.fs.find_component(f"{prev}_addition")
     m.fs.post_chem_to_product = Arc(
         source=last_chem.product.outlet, destination=m.fs.product.inlet
     )
     m.fs.disposal_mixer_to_disposal = Arc(
         source=m.fs.disposal_mixer.outlet, destination=m.fs.disposal.inlet
     )
+    #####
+    # m.fs.ro_to_disposal = Arc(
+    #     source=m.fs.tsro_header.outlet, destination=m.fs.disposal.inlet
+    # )
+    # m.fs.ro_to_product = Arc(
+    #     source=m.fs.ro_product_mixer.outlet, destination=m.fs.product.inlet
+    # )
 
     TransformationFactory("network.expand_arcs").apply_to(m)
 
 
-def set_inlet_conditions(m, Qin=2637*4, Cin=0.5, file="wrd_ro_inputs_8_19_21.yaml"):
+def set_inlet_conditions(m, Qin=2637 * 4, Cin=0.5, file="wrd_ro_inputs_8_19_21.yaml"):
 
     m.fs.feed.properties.calculate_state(
         var_args={
@@ -301,16 +306,30 @@ def set_wrd_operating_conditions(m):
 
     set_uf_system_op_conditions(m)
     set_ro_system_op_conditions(m)
-    
+
     for t in m.fs.tsro_trains:
         if t == m.fs.tsro_trains.first():
-            m.fs.tsro_feed_separator.split_fraction[0, f"to_tsro{t}", "H2O"].set_value(1 / len(m.fs.tsro_trains))
+            m.fs.tsro_feed_separator.split_fraction[0, f"to_tsro{t}", "H2O"].set_value(
+                1 / len(m.fs.tsro_trains)
+            )
+            m.fs.tsro_feed_separator.split_fraction[0, f"to_tsro{t}", "NaCl"].set_value(
+                1 / len(m.fs.tsro_trains)
+            )
         else:
-            m.fs.tsro_feed_separator.split_fraction[0, f"to_tsro{t}", "H2O"].fix(1 / len(m.fs.tsro_trains))
+            m.fs.tsro_feed_separator.split_fraction[0, f"to_tsro{t}", "H2O"].fix(
+                1 / len(m.fs.tsro_trains)
+            )
+            m.fs.tsro_feed_separator.split_fraction[0, f"to_tsro{t}", "NaCl"].fix(
+                1 / len(m.fs.tsro_trains)
+            )
         set_ro_stage_op_conditions(m.fs.tsro_train[t])
 
     set_uv_aop_op_conditions(m.fs.UV_aop)
     set_decarbonator_op_conditions(m.fs.decarbonator)
+
+    m.fs.tsro_product_mixer.outlet.pressure[0].fix(101325)
+    m.fs.ro_system_product_mixer.outlet.pressure[0].fix(101325)
+    m.fs.tsro_brine_mixer.outlet.pressure[0].fix(101325)
 
 
 def set_wrd_system_scaling(m):
@@ -327,20 +346,22 @@ def set_wrd_system_scaling(m):
 
     set_uf_system_scaling(m)
     set_ro_system_scaling(m)
-    for t in m.fs.tsro_trains:
-        set_ro_stage_scaling(m.fs.tsro_train[t])
-    # add_UF_pump_scaling(m.fs.UF_pumps)
-    # add_pump_scaling(m.fs.UF_pumps)
-    # # add_separator_scaling(m.fs.UF) # Nothing to scale?
-    # add_ro_scaling(m.fs.ro_system)
-    add_uv_aop_scaling(m.fs.UV_aop)
-    add_decarbonator_scaling(m.fs.decarbonator)
+    # for t in m.fs.tsro_trains:
+    #     set_ro_stage_scaling(m.fs.tsro_train[t])
+    # # add_UF_pump_scaling(m.fs.UF_pumps)
+    # # add_pump_scaling(m.fs.UF_pumps)
+    # # # add_separator_scaling(m.fs.UF) # Nothing to scale?
+    # # add_ro_scaling(m.fs.ro_system)
+    # add_uv_aop_scaling(m.fs.UV_aop)
+    # add_decarbonator_scaling(m.fs.decarbonator)
 
 
 def initialize_wrd_system(m):
+
     m.fs.feed.initialize()
+
     # Initialize pre-UF chemical chain
-    for i, chem_name in enumerate((m.fs.pre_treat_chem_list)):
+    for i, chem_name in enumerate(m.fs.pre_treat_chem_list):
         unit = m.fs.find_component(chem_name + "_addition")
         if i == 0:
             a = m.fs.find_component(f"feed_to_{chem_name}")
@@ -351,85 +372,75 @@ def initialize_wrd_system(m):
             propagate_state(a)
             initialize_chem_addition(unit)
         prev = chem_name
-    last_chem = m.fs.find_component(m.fs.pre_treat_chem_list[-1] + "_addition")
+
     propagate_state(m.fs.pre_chem_to_uf_system)
     initialize_uf_system(m)
     propagate_state(m.fs.uf_system_to_pro)
-    initialize_ro_system(
-        m)
+    initialize_ro_system(m)
+
+    # propagate_state(m.fs.ro_to_product)
+    # m.fs.product.initialize()
+    # propagate_state(m.fs.ro_to_disposal)
+    # m.fs.disposal.initialize()
+    propagate_state(m.fs.pro_to_ro_system_product_mixer)
+    propagate_state(m.fs.pro_to_disposal_mixer)
     propagate_state(m.fs.pro_to_tsro_header)
     m.fs.tsro_header.initialize()
     propagate_state(m.fs.tsro_header_to_tsro_separator)
     m.fs.tsro_feed_separator.initialize()
-    # for t in m.fs.tsro_trains:
-    #     a = m.fs.find_component(f"tsro_header_to_tsro{t}")
-    #     propagate_state(a)
-    #     initialize_ro_stage(m.fs.tsro_train[t])
-    #     a = m.fs.ro_system_product_mixer.find_component(f"tsro{t}_to_ro_product")
-    #     propagate_state(a)
-    #     a = m.fs.tsro_brine_mixer.find_component(f"tsro{t}_to_brine")
-    #     propagate_state(a)
-        
-        # a = Arc(
-        #     source=m.fs.tsro_feed_separator.find_component(f"to_tsro{t}"),
-        #     destination=m.fs.tsro_train[t].feed.inlet,
-        # )
-        # m.fs.add_component(f"tsro_header_to_tsro{t}", a)
-        # a = Arc(
-        #     source=m.fs.tsro_train[t].product.outlet,
-        #     destination=m.fs.ro_system_product_mixer.find_component(
-        #         f"tsro{t}_to_ro_product"
-        #     ),
-        # )
-        # m.fs.add_component(f"tsro{t}_to_ro_product", a)
-        # # m.fs.add_component(
-        # #     f"tsro{t}_to_product",
-        # #     Arc(
-        # #         source=m.fs.tsro_train[t].permeate.outlet,
-        # #         destination=m.fs.tsro_product_mixer.find_component("tsro" + str(t) + "_to_product").inlet,
-        # #     ),
-        # # )
-        # a = Arc(
-        #     source=m.fs.tsro_train[t].disposal.outlet,
-        #     destination=m.fs.tsro_brine_mixer.find_component(f"tsro{t}_to_brine"),
-        # )
-        # m.fs.add_component(f"tsro{t}_to_brine", a)
-    # propagate from last pre-UF chemical to UF
-    # propagate_state(
-    #     m.fs.find_component(m.fs.pre_treat_chem_list[-1] + "_to_translator")
+    for t in m.fs.tsro_trains:
+        a = m.fs.find_component(f"tsro_header_to_tsro{t}")
+        propagate_state(a)
+        initialize_ro_stage(m.fs.tsro_train[t])
+        a = m.fs.find_component(f"tsro{t}_to_ro_product")
+        propagate_state(a)
+        a = m.fs.find_component(f"tsro{t}_to_brine")
+        propagate_state(a)
+
+    m.fs.tsro_brine_mixer.initialize()
+    propagate_state(m.fs.tsro_brine_mixer_to_disposal)
+
+    m.fs.uf_disposal_mixer.initialize()
+    propagate_state(m.fs.uf_disposal_to_disposal_mixer)
+
+    m.fs.ro_system_product_mixer.initialize()
+    propagate_state(m.fs.ro_system_product_mixer_to_uv)
+
+    initialize_uv_aop(m.fs.UV_aop)
+    propagate_state(m.fs.uv_to_decarbonator)
+
+    initialize_decarbonator(m.fs.decarbonator)
+
+    # Chain post-treatment chemicals (decarbonator -> post1 -> post2 -> ... -> product)
+    for i, chem_name in enumerate((m.fs.post_treat_chem_list)):
+        unit = m.fs.find_component(f"{chem_name}_addition")
+        if i == 0:
+            # Connect decarb to first chemical
+            a = m.fs.find_component(f"decarb_to_{chem_name}")
+            # m.fs.add_component("decarb_to_" + chem_name, a)
+            propagate_state(a)
+            initialize_chem_addition(unit)
+        else:
+            a = m.fs.find_component(f"{prev}_to_{chem_name}")
+            propagate_state(a)
+            initialize_chem_addition(unit)
+        prev = chem_name
+
+    last_chem = m.fs.find_component(f"{prev}_addition")
+    propagate_state(m.fs.post_chem_to_product)
+    # m.fs.post_chem_to_product = Arc(
+    #     source=last_chem.product.outlet, destination=m.fs.product.inlet
     # )
+    m.fs.product.initialize()
 
-    # propagate_state(m.fs.translator_to_uf_pumps)
-    # # UF Pumps and separator
-    # init_UF_pumps(m.fs.UF_pumps)
-    # propagate_state(m.fs.uf_pumps_to_uf)
-    # init_separator(m.fs.UF)
+    m.fs.disposal_mixer.initialize()
+    propagate_state(m.fs.disposal_mixer_to_disposal)
 
-    # propagate_state(m.fs.UF_to_ro)
-    # initialize_ro_system(m.fs.ro_system)
-    # propagate_state(m.fs.ro_to_uv)
-    # initialize_uv_aop(m.fs.UV_aop)
-    # propagate_state(m.fs.uv_to_decarbonator)
-    # initialize_decarbonator(m.fs.decarbonator)
-
-    # # Initialize post-treatment chemical chain (downstream of decarbonator)
-    # for i, chem_name in enumerate(m.fs.post_treat_chem_list):
-    #     if i == 0:
-    #         propagate_state(m.fs.find_component("decarb_to_" + chem_name))
-    #     else:
-    #         prev = m.fs.post_treat_chem_list[i - 1]
-    #         propagate_state(m.fs.find_component(prev + "_to_" + chem_name))
-    #     initialize_chem_addition(m.fs.find_component(chem_name + "_addition"))
-
-    # propagate_state(m.fs.find_component(m.fs.post_treat_chem_list[-1] + "_to_product"))
-    # m.fs.product.initialize()
-    # propagate_state(m.fs.ro_waste_to_brine)
-    # m.fs.brine.initialize()
-
+    m.fs.disposal.initialize()
 
 
 def report_sj(sj, w=25):
-    
+
     title = sj.name.replace("fs.", "").replace("_", " ").upper()
 
     side = int(((3 * w) - len(title)) / 2) - 1
@@ -464,8 +475,9 @@ def report_sj(sj, w=25):
     # print(f'{"OUTLET Flow":<{w}s}{f"{flow_out:<{w},.1f}"}{"gpm":<{w}s}')
     # print(f'{"OUTLET NaCl":<{w}s}{f"{conc_out:<{w},.1f}"}{"mg/L":<{w}s}')
 
+
 def report_mixer(mixer, w=25):
-    
+
     ms = mixer.find_component("mixed_state")
     title = mixer.name.replace("fs.", "").replace("_", " ").upper()
     side = int(((3 * w) - len(title)) / 2) - 1
@@ -473,18 +485,14 @@ def report_mixer(mixer, w=25):
     print(f"\n{header}\n")
     tot_flow_in = sum(
         value(
-            value(
-                pyunits.convert(
-                    mixer.find_component(f"{x}_state")[0].flow_vol_phase["Liq"],
-                    to_units=pyunits.gallons / pyunits.minute,
-                )
+            pyunits.convert(
+                mixer.find_component(f"{x}_state")[0].flow_vol_phase["Liq"],
+                to_units=pyunits.gallons / pyunits.minute,
             )
         )
         for x in mixer.config.inlet_list
     )
-    print(
-        f'{"TOTAL INLET FLOW":<{w}s}{f"{tot_flow_in:<{w},.1f}"}{"gpm":<{w}s}'
-    )
+    print(f'{"TOTAL INLET FLOW":<{w}s}{f"{tot_flow_in:<{w},.1f}"}{"gpm":<{w}s}')
     for x in mixer.config.inlet_list:
         sb = mixer.find_component(f"{x}_state")
         flow_in = value(
@@ -520,6 +528,7 @@ def report_mixer(mixer, w=25):
     )
     print(f'{"Outlet Flow":<{w}s}{f"{flow_out:<{w},.1f}"}{"gpm":<{w}s}')
     print(f'{"Outlet NaCl":<{w}s}{f"{conc_out:<{w},.1f}"}{"mg/L":<{w}s}')
+
 
 def report_separator(sep, w=25):
 
@@ -576,6 +585,70 @@ def report_separator(sep, w=25):
             f'{"   NaCl " + x.replace("_", " ").title():<{w}s}{f"{conc_out:<{w},.1f}"}{"mg/L":<{w}s}'
         )
 
+
+def report_wrd(m, w=30):
+
+    feed_flow = pyunits.convert(
+        m.fs.feed.properties[0].flow_vol_phase["Liq"],
+        to_units=pyunits.gallon / pyunits.minute,
+    )
+    feed_flow_mgd = pyunits.convert(feed_flow, to_units=pyunits.Mgallons / pyunits.day)
+    feed_conc = pyunits.convert(
+        m.fs.feed.properties[0].conc_mass_phase_comp["Liq", "NaCl"],
+        to_units=pyunits.mg / pyunits.L,
+    )
+
+    prod_flow = pyunits.convert(
+        m.fs.product.properties[0].flow_vol_phase["Liq"],
+        to_units=pyunits.gallon / pyunits.minute,
+    )
+    prod_flow_mgd = pyunits.convert(prod_flow, to_units=pyunits.Mgallons / pyunits.day)
+    prod_conc = pyunits.convert(
+        m.fs.product.properties[0].conc_mass_phase_comp["Liq", "NaCl"],
+        to_units=pyunits.mg / pyunits.L,
+    )
+
+    brine_flow = pyunits.convert(
+        m.fs.disposal.properties[0].flow_vol_phase["Liq"],
+        to_units=pyunits.gallon / pyunits.minute,
+    )
+    brine_flow_mgd = pyunits.convert(
+        brine_flow, to_units=pyunits.Mgallons / pyunits.day
+    )
+    brine_conc = pyunits.convert(
+        m.fs.disposal.properties[0].conc_mass_phase_comp["Liq", "NaCl"],
+        to_units=pyunits.mg / pyunits.L,
+    )
+
+    title = f"WRD Report Performance"
+    side = int(((3 * w) - len(title)) / 2) - 1
+    header = "_" * side + f" {title} " + "_" * side
+    print(f"\n\n{header}\n")
+    print(f'{"Parameter":<{w}s}{"Value":<{w}s}{"Units":<{w}s}')
+    print(f"{'-' * (3 * w)}")
+    print(
+        f'{"System Recovery":<{w}s}{value(m.fs.system_recovery)*100:<{w}.3f}{"%":<{w}s}'
+    )
+    print(f'{f"Feed Flow (gpm)":<{w}s}{value(feed_flow):<{w}.3f}{"gpm"}')
+    print(f'{f"Feed Flow (MGD)":<{w}s}{value(feed_flow_mgd):<{w}.3f}{"MGD"}')
+    print(f'{f"Feed Conc":<{w}s}{value(feed_conc):<{w}.3f}{"mg/L"}')
+    print(f'{f"Product Flow (gpm)":<{w}s}{value(prod_flow):<{w}.3f}{"gpm"}')
+    print(f'{f"Product Flow (MGD)":<{w}s}{value(prod_flow_mgd):<{w}.3f}{"MGD"}')
+    print(f'{f"Product Conc":<{w}s}{value(prod_conc):<{w}.3f}{"mg/L"}')
+    print(f'{f"Brine Flow (gpm)":<{w}s}{value(brine_flow):<{w}.3f}{"gpm"}')
+    print(f'{f"Brine Flow (MGD)":<{w}s}{value(brine_flow_mgd):<{w}.3f}{"MGD"}')
+    print(f'{f"Brine Conc":<{w}s}{value(brine_conc):<{w}.3f}{"mg/L"}')
+
+    # for i, chem_name in enumerate(m.fs.pre_treat_chem_list):
+    #     unit = m.fs.find_component(chem_name + "_addition")
+    #     report_chem_addition(unit, w=w )
+
+    # report_uf_system(m, w=w)
+    report_ro_system(m, w=w)
+    report_mixer(m.fs.ro_brine_mixer)
+    report_sj(m.fs.tsro_header)
+
+
 def main(num_pro_trains=4, num_tsro_trains=None, num_stages=2):
     m = build_wrd_system(
         num_pro_trains=num_pro_trains,
@@ -586,10 +659,10 @@ def main(num_pro_trains=4, num_tsro_trains=None, num_stages=2):
     add_wrd_connections(m)
     # print(f"{degrees_of_freedom(m)} degrees of freedom after build")
     # set_inlet_conditions(m)
+    set_inlet_conditions(m)
     set_wrd_operating_conditions(m)
     set_wrd_system_scaling(m)
     calculate_scaling_factors(m)
-    set_inlet_conditions(m)
     initialize_wrd_system(m)
 
     # print(f"{degrees_of_freedom(m)} degrees of freedom after setting op conditions")
@@ -604,20 +677,27 @@ def main(num_pro_trains=4, num_tsro_trains=None, num_stages=2):
     #     print("\n--------- Failed to Solve ---------\n")
     return m
 
+
 if __name__ == "__main__":
     num_stages = 2
-    
+
     m = main(num_stages=num_stages)
+    solver = get_solver()
+    results = solver.solve(m)
+    assert_optimal_termination(results)
+    report_wrd(m)
     # from wrd.components.UF_separator import report_uf_separator
     # m.fs.tsro_header.properties[0].display()
     # report_ro_system(m)
-    report_mixer(m.fs.uf_product_mixer)
-    report_separator(m.fs.ro_feed_separator)
-    report_mixer(m.fs.ro_product_mixer)
-    report_mixer(m.fs.ro_brine_mixer)
-    report_sj(m.fs.tsro_header)
-    # report_ro_train(m.fs.train[1])
-    report_separator(m.fs.tsro_feed_separator)
+    # report_mixer(m.fs.uf_product_mixer)
+    # report_separator(m.fs.ro_feed_separator)
+    # report_mixer(m.fs.ro_product_mixer)
+    # report_mixer(m.fs.ro_brine_mixer)
+    # report_sj(m.fs.tsro_header)
+    # # report_ro_train(m.fs.train[1])
+    # report_separator(m.fs.tsro_feed_separator)
+    # x = pyunits.convert(m.fs.feed.properties[0].flow_vol_phase["Liq"], to_units=pyunits.gallons / pyunits.minute)
+    # print(f"\nFeed Flowrate: {x():.1f} gpm\n")
 
     # m = build_wrd_system(num_stages=num_stages, date=date)
     # add_connections(m)
