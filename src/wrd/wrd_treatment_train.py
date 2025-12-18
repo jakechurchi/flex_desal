@@ -383,7 +383,6 @@ def initialize_wrd_system(m):
     m.fs.uf_disposal_mixer.initialize()
     propagate_state(m.fs.uf_disposal_to_disposal_mixer)
 
-
     propagate_state(m.fs.uf_system_to_pro)
     initialize_ro_system(m)
 
