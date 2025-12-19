@@ -72,7 +72,7 @@ def build_system(stage_num=1, file="wrd_ro_inputs_8_19_21.yaml"):
     return m
 
 
-def build_pump(blk, stage_num=1, file="wrd_ro_inputs_8_19_21.yaml", prop_package=None):
+def build_pump(blk, stage_num=1, file="wrd_ro_inputs_8_19_21.yaml", prop_package=None,uf=False):
 
     if prop_package is None:
         m = blk.model()
@@ -97,7 +97,12 @@ def build_pump(blk, stage_num=1, file="wrd_ro_inputs_8_19_21.yaml", prop_package
     )
 
     # Load Values for surrogate model
-    if stage_num == 1:
+    if uf:
+        a_0 = 0.0677
+        a_1 = 5.357
+        a_2 = -4.475
+        a_3 = -19.578
+    elif stage_num == 1:
         a_0 = 0.389
         a_1 = -0.535
         a_2 = 41.373
@@ -108,6 +113,7 @@ def build_pump(blk, stage_num=1, file="wrd_ro_inputs_8_19_21.yaml", prop_package
         a_2 = -133.157
         a_3 = -234.386
     else:
+        # Still missing TSRO pump curves
         a_0 = 0.067
         a_1 = 21.112
         a_2 = -133.157
