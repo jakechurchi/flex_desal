@@ -200,7 +200,7 @@ def build_pump(
     TransformationFactory("network.expand_arcs").apply_to(blk)
 
 
-def set_pump_op_conditions(blk,uf=False):
+def set_pump_op_conditions(blk, uf=False):
     if uf:
         Pout = get_config_value(
             blk.config_data, "pump_outlet_pressure", "uf_pumps", f"pump_{blk.stage_num}"

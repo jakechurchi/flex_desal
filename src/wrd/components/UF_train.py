@@ -148,7 +148,7 @@ def set_inlet_conditions(m, Qin=2637, Cin=0.5, Tin=298, Pin=101325):
 
 
 def set_uf_train_op_conditions(blk, split_fractions=None):
-    set_pump_op_conditions(blk.pump,uf=True)
+    set_pump_op_conditions(blk.pump, uf=True)
     if split_fractions is None:
         split_fractions = {
             "product": {"H2O": 0.99, "NaCl": 0.99},

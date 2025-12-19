@@ -33,7 +33,7 @@ from srp.utils import touch_flow_and_conc
 from models import HeadLoss
 
 
-def build_wrd_system(num_pro_trains=4, num_tsro_trains=None, num_stages=2):
+def build_wrd_system(num_pro_trains=4, num_tsro_trains=None, num_stages=2,date="8_19_21"):
 
     if num_tsro_trains is None:
         num_tsro_trains = num_pro_trains
@@ -44,8 +44,9 @@ def build_wrd_system(num_pro_trains=4, num_tsro_trains=None, num_stages=2):
     m.num_stages = num_stages
     m.fs = FlowsheetBlock(dynamic=False)
 
-    config_file_name = get_config_file("wrd_feed_flow.yaml")
-    m.fs.config_data = load_config(config_file_name)
+    config_file_name = "wrd_inputs_" + date + ".yaml"
+    config = get_config_file(config_file_name)
+    m.fs.config_data = load_config(config)
     m.fs.properties = NaClParameterBlock()
 
     # Add units
@@ -272,8 +273,7 @@ def add_wrd_connections(m):
     TransformationFactory("network.expand_arcs").apply_to(m)
 
 
-def set_wrd_inlet_conditions(m, Qin=2637, Cin=0.5, file="wrd_ro_inputs_8_19_21.yaml"):
-
+def set_inlet_conditions(m, Qin=2637 * 4, Cin=0.5, file="wrd_inputs_8_19_21.yaml"):
     m.fs.feed.properties.calculate_state(
         var_args={
             ("flow_vol_phase", ("Liq")): (Qin * m.num_pro_trains)
