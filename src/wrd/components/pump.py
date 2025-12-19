@@ -114,28 +114,28 @@ def build_pump(blk, stage_num=1, file="wrd_ro_inputs_8_19_21.yaml", prop_package
         a_3 = -234.386
 
     # Create Variables for simple "surrogate"
-    blk.unit.efficiency_eq_constant = Param(
+    blk.unit.efficiency_constant = Param(
         initialize=a_0,
         mutable=True,
         units=pyunits.dimensionless,
         doc="Constant term of Efficiency equation",
     )
 
-    blk.unit.efficiency_eq_linear = Param(
+    blk.unit.efficiency_linear_coeff = Param(
         initialize=a_1,
         mutable=True,
         units=(pyunits.m**3 / pyunits.s) ** -1,
         doc="Linear term of Efficiency equation",
     )
 
-    blk.unit.efficiency_eq_squared = Param(
+    blk.unit.efficiency_squared_coeff = Param(
         initialize=a_2,
         mutable=True,
         units=(pyunits.m**3 / pyunits.s) ** -2,
         doc="Squared term of Efficiency equation",
     )
 
-    blk.unit.efficiency_eq_cubed = Param(
+    blk.unit.efficiency_cubed_coeff = Param(
         initialize=a_3,
         mutable=True,
         units=(pyunits.m**3 / pyunits.s) ** -3,
@@ -144,12 +144,12 @@ def build_pump(blk, stage_num=1, file="wrd_ro_inputs_8_19_21.yaml", prop_package
 
     flow = blk.feed.properties[0].flow_vol_phase["Liq"]
 
-    blk.unit.efficiency_surr_eq = Constraint(
+    blk.unit.eq_efficiency_surr = Constraint(
         expr=blk.unit.efficiency_fluid
-        == blk.unit.efficiency_eq_cubed * flow**3
-        + blk.unit.efficiency_eq_squared * flow**2
-        + blk.unit.efficiency_eq_linear * flow
-        + blk.unit.efficiency_eq_constant,
+        == blk.unit.efficiency_cubed_coeff * flow**3
+        + blk.unit.efficiency_squared_coeff * flow**2
+        + blk.unit.efficiency_linear_coeff * flow
+        + blk.unit.efficiency_constant,
         doc="Efficiency surrogate equation",
     )
     blk.unit.efficiency_pump.bounds = (0, 1)
@@ -175,7 +175,7 @@ def build_pump(blk, stage_num=1, file="wrd_ro_inputs_8_19_21.yaml", prop_package
         doc="Loss factor due to heat, age, wear, etc.",
     )
 
-    blk.unit.efficiency_electrical = Constraint(
+    blk.unit.eq_efficiency_electrical = Constraint(
         expr=blk.unit.efficiency_pump[0]
         == (
             blk.unit.efficiency_motor
