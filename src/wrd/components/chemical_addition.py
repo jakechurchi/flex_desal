@@ -150,13 +150,9 @@ def set_chem_addition_op_conditions(blk, dose=None):
         if dose is not None:
             dose = dose.get("value", None)
         elif dose is None:
-            dose = blk.chem_data.get("dose", None)
-            if dose is not None:
-                dose = dose.get("value", None)
-            elif dose is None:
-                raise ValueError(
-                    "dose must be provided to set_chem_addition_op_conditions or in the config file"
-                )
+            raise ValueError(
+                "dose must be provided to set_chem_addition_op_conditions or in the config file"
+            )
 
     blk.unit.dose.fix(dose)
 
