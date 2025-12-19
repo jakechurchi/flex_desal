@@ -10,8 +10,6 @@ from pyomo.environ import (
     TransformationFactory,
 )
 from idaes.core.util.model_diagnostics import DiagnosticsToolbox
-import pyomo.contrib.parmest.parmest as parmest
-from pyomo.contrib.parmest.experiment import Experiment
 
 from idaes.core.util.initialization import propagate_state
 from idaes.core.util.model_statistics import degrees_of_freedom
@@ -41,6 +39,9 @@ def build_wrd_system(num_pro_trains=4, num_tsro_trains=None, num_stages=2):
         num_tsro_trains = num_pro_trains
 
     m = ConcreteModel()
+    m.num_pro_trains = num_pro_trains
+    m.num_tsro_trains = num_tsro_trains
+    m.num_stages = num_stages
     m.fs = FlowsheetBlock(dynamic=False)
 
     config_file_name = get_config_file("wrd_feed_flow.yaml")
@@ -75,6 +76,12 @@ def build_wrd_system(num_pro_trains=4, num_tsro_trains=None, num_stages=2):
         prop_package=m.fs.properties,
     )
 
+    m.fs.total_system_pump_power = Expression(
+        expr=pyunits.convert(
+            m.fs.total_uf_pump_power + m.fs.total_ro_pump_power, to_units=pyunits.kW
+        )
+    )
+
     # TSRO System
     m.fs.tsro_trains = Set(initialize=range(1, num_tsro_trains + 1))
     m.fs.tsro_header = StateJunction(property_package=m.fs.properties)
@@ -91,13 +98,6 @@ def build_wrd_system(num_pro_trains=4, num_tsro_trains=None, num_stages=2):
     for t in m.fs.tsro_trains:
         build_ro_stage(m.fs.tsro_train[t], stage_num=3, prop_package=m.fs.properties)
 
-    # Connections by pass this mixer, so can be removed
-    # m.fs.tsro_product_mixer = Mixer(
-    #     property_package=m.fs.properties,
-    #     inlet_list=[f"tsro{i}_to_product" for i in m.fs.tsro_trains],
-    #     momentum_mixing_type=MomentumMixingType.none,
-    # )
-
     ro_system_prod_mixer_inlet_list = ["from_pro_product"] + [
         f"tsro{t}_to_ro_product" for t in m.fs.tsro_trains
     ]
@@ -107,12 +107,14 @@ def build_wrd_system(num_pro_trains=4, num_tsro_trains=None, num_stages=2):
         inlet_list=ro_system_prod_mixer_inlet_list,
         momentum_mixing_type=MomentumMixingType.none,
     )
+    touch_flow_and_conc(m.fs.ro_system_product_mixer)
 
     m.fs.tsro_brine_mixer = Mixer(
         property_package=m.fs.properties,
         inlet_list=[f"tsro{t}_to_brine" for t in m.fs.tsro_trains],
         momentum_mixing_type=MomentumMixingType.none,
     )
+    touch_flow_and_conc(m.fs.tsro_brine_mixer)
 
     # UV AOP
     m.fs.UV_aop = FlowsheetBlock(dynamic=False)
@@ -126,25 +128,14 @@ def build_wrd_system(num_pro_trains=4, num_tsro_trains=None, num_stages=2):
     m.fs.post_treat_chem_list = [
         "calcium_hydroxide",
         "sodium_hydroxide",
-        "sodium_hypochlorite",
         "sodium_bisulfite",
     ]
 
     for chem_name in m.fs.post_treat_chem_list:
-        if chem_name == "sodium_hypochlorite":
-            m.fs.add_component(
-                chem_name + "_addition_post", FlowsheetBlock(dynamic=False)
-            )
-            build_chem_addition(
-                m.fs.find_component(chem_name + "_addition_post"),
-                chem_name,
-                m.fs.properties,
-            )
-        else:
-            m.fs.add_component(chem_name + "_addition", FlowsheetBlock(dynamic=False))
-            build_chem_addition(
-                m.fs.find_component(chem_name + "_addition"), chem_name, m.fs.properties
-            )
+        m.fs.add_component(chem_name + "_addition", FlowsheetBlock(dynamic=False))
+        build_chem_addition(
+            m.fs.find_component(chem_name + "_addition"), chem_name, m.fs.properties
+        )
     # Combined chemical list for operating conditions, scaling, and costing(?)
     m.fs.chemical_list = m.fs.pre_treat_chem_list + m.fs.post_treat_chem_list
 
@@ -154,6 +145,7 @@ def build_wrd_system(num_pro_trains=4, num_tsro_trains=None, num_stages=2):
         inlet_list=["from_uf_disposal", "from_tsro_brine"],
         momentum_mixing_type=MomentumMixingType.none,
     )
+    touch_flow_and_conc(m.fs.disposal_mixer)
 
     m.fs.product = Product(property_package=m.fs.properties)
     touch_flow_and_conc(m.fs.product)
@@ -234,11 +226,7 @@ def add_wrd_connections(m):
         source=m.fs.uf_disposal_mixer.outlet,
         destination=m.fs.disposal_mixer.from_uf_disposal,
     )
-    # There is no direct line from pro to brine
-    # m.fs.pro_to_disposal_mixer = Arc(
-    #     source=m.fs.ro_brine_mixer.outlet,
-    #     destination=m.fs.disposal_mixer.from_pro_brine,
-    # )
+
     m.fs.ro_system_product_mixer_to_uv = Arc(
         source=m.fs.ro_system_product_mixer.outlet, destination=m.fs.UV_aop.feed.inlet
     )
@@ -284,36 +272,33 @@ def add_wrd_connections(m):
     TransformationFactory("network.expand_arcs").apply_to(m)
 
 
-def set_inlet_conditions(m, Qin=2637 * 4, Cin=0.5, file="wrd_ro_inputs_8_19_21.yaml"):
+def set_wrd_inlet_conditions(m, Qin=2637, Cin=0.5, file="wrd_ro_inputs_8_19_21.yaml"):
 
     m.fs.feed.properties.calculate_state(
         var_args={
-            ("flow_vol_phase", ("Liq")): Qin * pyunits.gallons / pyunits.minute,
+            ("flow_vol_phase", ("Liq")): (Qin * m.num_pro_trains)
+            * pyunits.gallons
+            / pyunits.minute,
             ("conc_mass_phase_comp", ("Liq", "NaCl")): Cin * pyunits.g / pyunits.L,
             ("pressure", None): 101325,
             ("temperature", None): 273.15 + 27,
         },
         hold_state=True,
     )
-    print(degrees_of_freedom(m))
 
 
 def set_wrd_operating_conditions(m):
+
     # Operating conditions
     for chem_name in m.fs.chemical_list:
-        # Load dose from yaml??
         set_chem_addition_op_conditions(
             blk=m.fs.find_component(chem_name + "_addition"), dose=0.1
         )
-        if chem_name == "sodium_hypochlorite":
-            set_chem_addition_op_conditions(
-                blk=m.fs.find_component(chem_name + "_addition_post"), dose=0.1
-            )
-    print(degrees_of_freedom(m))
+
     set_uf_system_op_conditions(m)
-    print(degrees_of_freedom(m))
+
     set_ro_system_op_conditions(m)
-    print(degrees_of_freedom(m))
+
     for t in m.fs.tsro_trains:
         if t != m.fs.tsro_trains.first():
             m.fs.tsro_feed_separator.split_fraction[0, f"to_tsro{t}", "H2O"].fix(
@@ -330,32 +315,32 @@ def set_wrd_operating_conditions(m):
                 1 / len(m.fs.tsro_trains)
             )
         set_ro_stage_op_conditions(m.fs.tsro_train[t])
-    print(degrees_of_freedom(m))
+
     set_uv_aop_op_conditions(m.fs.UV_aop)
-    print(degrees_of_freedom(m))
+
     set_decarbonator_op_conditions(m.fs.decarbonator)
-    print(degrees_of_freedom(m))
 
     # m.fs.tsro_header.control_volume.deltaP[0].fix(-40* pyunits.psi)
-    # m.fs.tsro_product_mixer.outlet.pressure[0].fix(101325) #Removed mixer
     m.fs.ro_system_product_mixer.outlet.pressure[0].fix(101325)
     m.fs.tsro_brine_mixer.outlet.pressure[0].fix(101325)
     m.fs.disposal_mixer.outlet.pressure[0].fix(101325)
 
 
 def set_wrd_system_scaling(m):
-    # Properties Scaling
+
     m.fs.properties.set_default_scaling(
         "flow_mass_phase_comp", 1e-1, index=("Liq", "H2O")
     )
     m.fs.properties.set_default_scaling(
         "flow_mass_phase_comp", 1e2, index=("Liq", "NaCl")
     )
-    # NO Chem Addition Scaling?
+
     set_uf_system_scaling(m)
     set_ro_system_scaling(m)
+
     for t in m.fs.tsro_trains:
         set_ro_stage_scaling(m.fs.tsro_train[t])
+
     add_uv_aop_scaling(m.fs.UV_aop)
     add_decarbonator_scaling(m.fs.decarbonator)
 
@@ -377,7 +362,7 @@ def initialize_wrd_system(m):
             initialize_chem_addition(unit)
         prev = chem_name
 
-    propagate_state(m.fs.pre_chem_to_uf_system)  # separator inside uf system
+    propagate_state(m.fs.pre_chem_to_uf_system)
     initialize_uf_system(m)
 
     m.fs.uf_disposal_mixer.initialize()
@@ -404,7 +389,7 @@ def initialize_wrd_system(m):
         propagate_state(a)
 
     m.fs.tsro_brine_mixer.initialize()
-    propagate_state(m.fs.tsro_brine_mixer_to_disposal)  # This mixer could be removed?
+    propagate_state(m.fs.tsro_brine_mixer_to_disposal)
 
     m.fs.ro_system_product_mixer.initialize()
     propagate_state(m.fs.ro_system_product_mixer_to_uv)
@@ -434,139 +419,6 @@ def initialize_wrd_system(m):
     propagate_state(m.fs.disposal_mixer_to_disposal)
 
     m.fs.disposal.initialize()
-
-
-def report_sj(sj, w=25):
-    # sj = state junction
-    title = sj.name.replace("fs.", "").replace("_", " ").upper()
-
-    side = int(((3 * w) - len(title)) / 2) - 1
-    header = "=" * side + f" {title} " + "=" * side
-    print(f"\n{header}\n")
-    flow_in = value(
-        pyunits.convert(
-            sj.properties[0].flow_vol_phase["Liq"],
-            to_units=pyunits.gallons / pyunits.minute,
-        )
-    )
-    conc_in = value(
-        pyunits.convert(
-            sj.properties[0].conc_mass_phase_comp["Liq", "NaCl"],
-            to_units=pyunits.mg / pyunits.L,
-        )
-    )
-    print(f'{"INLET/OUTLET Flow":<{w}s}{f"{flow_in:<{w},.1f}"}{"gpm":<{w}s}')
-    print(f'{"INLET/OUTLET NaCl":<{w}s}{f"{conc_in:<{w},.1f}"}{"mg/L":<{w}s}')
-
-
-def report_mixer(mixer, w=25):
-
-    ms = mixer.find_component("mixed_state")
-    title = mixer.name.replace("fs.", "").replace("_", " ").upper()
-    side = int(((3 * w) - len(title)) / 2) - 1
-    header = "=" * side + f" {title} " + "=" * side
-    print(f"\n{header}\n")
-    tot_flow_in = sum(
-        value(
-            pyunits.convert(
-                mixer.find_component(f"{x}_state")[0].flow_vol_phase["Liq"],
-                to_units=pyunits.gallons / pyunits.minute,
-            )
-        )
-        for x in mixer.config.inlet_list
-    )
-    print(f'{"TOTAL INLET FLOW":<{w}s}{f"{tot_flow_in:<{w},.1f}"}{"gpm":<{w}s}')
-    for x in mixer.config.inlet_list:
-        sb = mixer.find_component(f"{x}_state")
-        flow_in = value(
-            pyunits.convert(
-                sb[0].flow_vol_phase["Liq"],
-                to_units=pyunits.gallons / pyunits.minute,
-            )
-        )
-        tot_flow_in += flow_in
-        conc_in = value(
-            pyunits.convert(
-                sb[0].conc_mass_phase_comp["Liq", "NaCl"],
-                to_units=pyunits.mg / pyunits.L,
-            )
-        )
-        print(
-            f'{"   Flow " + x.replace("_", " ").title():<{w}s}{f"{flow_in:<{w},.1f}"}{"gpm":<{w}s}'
-        )
-        print(
-            f'{"   NaCl " + x.replace("_", " ").title():<{w}s}{f"{conc_in:<{w},.1f}"}{"mg/L":<{w}s}'
-        )
-    flow_out = value(
-        pyunits.convert(
-            ms[0].flow_vol_phase["Liq"],
-            to_units=pyunits.gallons / pyunits.minute,
-        )
-    )
-    conc_out = value(
-        pyunits.convert(
-            ms[0].conc_mass_phase_comp["Liq", "NaCl"],
-            to_units=pyunits.mg / pyunits.L,
-        )
-    )
-    print(f'{"Outlet Flow":<{w}s}{f"{flow_out:<{w},.1f}"}{"gpm":<{w}s}')
-    print(f'{"Outlet NaCl":<{w}s}{f"{conc_out:<{w},.1f}"}{"mg/L":<{w}s}')
-
-
-def report_separator(sep, w=25):
-
-    title = sep.name.replace("fs.", "").replace("_", " ").upper()
-
-    side = int(((3 * w) - len(title)) / 2) - 1
-    header = "=" * side + f" {title} " + "=" * side
-    print(f"\n{header}\n")
-    ms = sep.find_component("mixed_state")
-    flow_in = value(
-        pyunits.convert(
-            ms[0].flow_vol_phase["Liq"],
-            to_units=pyunits.gallons / pyunits.minute,
-        )
-    )
-    conc_in = value(
-        pyunits.convert(
-            ms[0].conc_mass_phase_comp["Liq", "NaCl"],
-            to_units=pyunits.mg / pyunits.L,
-        )
-    )
-    print(f'{"INLET Flow":<{w}s}{f"{flow_in:<{w},.1f}"}{"gpm":<{w}s}')
-    print(f'{"INLET NaCl":<{w}s}{f"{conc_in:<{w},.1f}"}{"mg/L":<{w}s}')
-    tot_flow_out = sum(
-        value(
-            value(
-                pyunits.convert(
-                    sep.find_component(f"{x}_state")[0].flow_vol_phase["Liq"],
-                    to_units=pyunits.gallons / pyunits.minute,
-                )
-            )
-        )
-        for x in sep.config.outlet_list
-    )
-    print(f'{"TOTAL OUTLET FLOW":<{w}s}{f"{tot_flow_out:<{w},.1f}"}{"gpm":<{w}s}')
-    for x in sep.config.outlet_list:
-        sb = sep.find_component(f"{x}_state")
-        flow_out = value(
-            pyunits.convert(
-                sb[0].flow_vol_phase["Liq"],
-                to_units=pyunits.gallons / pyunits.minute,
-            )
-        )
-        conc_out = value(
-            pyunits.convert(
-                sb[0].conc_mass_phase_comp["Liq", "NaCl"],
-                to_units=pyunits.mg / pyunits.L,
-            )
-        )
-        print(
-            f'{"   Flow " + x.replace("_", " ").title():<{w}s}{f"{flow_out:<{w},.1f}"}{"gpm":<{w}s}'
-        )
-        print(
-            f'{"   NaCl " + x.replace("_", " ").title():<{w}s}{f"{conc_out:<{w},.1f}"}{"mg/L":<{w}s}'
-        )
 
 
 def report_tsro(m, w=30):
@@ -614,9 +466,44 @@ def report_wrd(m, w=30):
         to_units=pyunits.mg / pyunits.L,
     )
 
-    title = f"WRD Report Performance"
+    title = f"WRD System Report"
     side = int(((3 * w) - len(title)) / 2) - 1
-    header = "_" * side + f" {title} " + "_" * side
+    header = "/" * side + f" {title} " + "\\" * side
+    print(f"\n\n{header}\n")
+    print(f'{"Parameter":<{w}s}{"Value":<{w}s}{"Units":<{w}s}')
+    print(f"{'-' * (3 * w)}")
+
+    for i, chem_name in enumerate(m.fs.pre_treat_chem_list):
+        unit = m.fs.find_component(chem_name + "_addition")
+        report_chem_addition(unit, w=w)
+
+    report_uf_system(m, w=w)
+    report_ro_system(m, w=w)
+
+    report_mixer(m.fs.ro_brine_mixer, w=w)
+    report_sj(m.fs.tsro_header, w=w)
+
+    for t in m.fs.tsro_trains:
+        title = f"TSRO Stage Report - Train {t}"
+        side = int(((3 * w) - len(title)) / 2) - 1
+        header = "=" * side + f" {title} " + "=" * side
+        print(f"\n{header}\n")
+        report_ro_stage(m.fs.tsro_train[t], w=w)
+
+    report_mixer(m.fs.tsro_brine_mixer, w=w)
+    report_mixer(m.fs.uf_disposal_mixer, w=w)
+    report_mixer(m.fs.ro_system_product_mixer, w=w)
+    report_mixer(m.fs.disposal_mixer, w=w)
+    report_uv(m.fs.UV_aop, w=w)
+    report_decarbonator(m.fs.decarbonator, w=w)
+
+    for i, chem_name in enumerate(m.fs.post_treat_chem_list):
+        unit = m.fs.find_component(chem_name + "_addition")
+        report_chem_addition(unit, w=w)
+
+    title = f"WRD System Summary"
+    side = int(((3 * w) - len(title)) / 2) - 1
+    header = "/" * side + f" {title} " + "\\" * side
     print(f"\n\n{header}\n")
     print(f'{"Parameter":<{w}s}{"Value":<{w}s}{"Units":<{w}s}')
     print(f"{'-' * (3 * w)}")
@@ -632,99 +519,37 @@ def report_wrd(m, w=30):
     print(f'{f"Brine Flow (gpm)":<{w}s}{value(brine_flow):<{w}.3f}{"gpm"}')
     print(f'{f"Brine Flow (MGD)":<{w}s}{value(brine_flow_mgd):<{w}.3f}{"MGD"}')
     print(f'{f"Brine Conc":<{w}s}{value(brine_conc):<{w}.3f}{"mg/L"}')
-
-    # for i, chem_name in enumerate(m.fs.pre_treat_chem_list):
-    #     unit = m.fs.find_component(chem_name + "_addition")
-    #     report_chem_addition(unit, w=w )
-
-    # report_uf_system(m, w=w)
-    report_ro_system(m, w=w)
-    report_mixer(m.fs.ro_brine_mixer)
-    report_sj(m.fs.tsro_header)
-    for t in m.fs.tsro_trains:
-        print(t)
-        report_ro_stage(m.fs.tsro_train[t])
-
-    report_mixer(m.fs.tsro_brine_mixer)
-    report_mixer(m.fs.uf_disposal_mixer)
-    report_mixer(m.fs.ro_system_product_mixer)
-    report_mixer(m.fs.disposal_mixer)
-    report_uv(m.fs.UV_aop)
-    report_decarbonator(m.fs.decarbonator)
-
-    for t in m.fs.tsro_trains:
-        print(t)
-        report_ro_stage(m.fs.tsro_train[t])
-
-    report_mixer(m.fs.tsro_brine_mixer)
-
-    report_mixer(m.fs.uf_disposal_mixer)
-    report_mixer(m.fs.ro_system_product_mixer)
-    report_mixer(m.fs.disposal_mixer)
-    report_uv(m.fs.UV_aop)
-    report_decarbonator(m.fs.decarbonator)
+    print()
+    print(
+        f'{f"Total Pumping Power":<{w}s}{value(pyunits.convert(m.fs.total_system_pump_power, to_units=pyunits.kW)):<{w}.3f}{"kW"}'
+    )
 
 
-def main(num_pro_trains=1, num_tsro_trains=1, num_pro_stages=2):
+def main(num_pro_trains=4, num_tsro_trains=None, num_stages=2):
+
     m = build_wrd_system(
         num_pro_trains=num_pro_trains,
         num_tsro_trains=num_tsro_trains,
-        num_stages=num_pro_stages,
+        num_stages=num_stages,
     )
     add_wrd_connections(m)
-    print(f"{degrees_of_freedom(m)} degrees of freedom after build")
-    set_inlet_conditions(m, Qin=2637 * num_pro_trains)
-    set_wrd_operating_conditions(m)
-    print(f"{degrees_of_freedom(m)} degrees of freedom after setting op conditions")
     set_wrd_system_scaling(m)
     calculate_scaling_factors(m)
+    print(f"{degrees_of_freedom(m)} degrees of freedom after build")
+    set_wrd_inlet_conditions(m)
+    set_wrd_operating_conditions(m)
+    print(f"{degrees_of_freedom(m)} degrees of freedom after setting op conditions")
     assert degrees_of_freedom(m) == 0
-    dt = DiagnosticsToolbox(m)
+
+    # dt = DiagnosticsToolbox(m)
     initialize_wrd_system(m)
-    # try:
-    #     results = solve(m)
-    #     assert_optimal_termination(results)
-    # except:
-    #     print_infeasible_constraints(m)
-    #     print("\n--------- Failed to Solve ---------\n")
-    return m
-
-
-if __name__ == "__main__":
-    num_stages = 2
-    m = main(num_pro_stages=num_stages)
     solver = get_solver()
     results = solver.solve(m)
     assert_optimal_termination(results)
     report_wrd(m)
-    # from wrd.components.UF_separator import report_uf_separator
-    # m.fs.tsro_header.properties[0].display()
-    # report_ro_system(m)
-    # report_mixer(m.fs.uf_product_mixer)
-    # report_separator(m.fs.ro_feed_separator)
-    # report_mixer(m.fs.ro_product_mixer)
-    # report_mixer(m.fs.ro_brine_mixer)
-    # report_sj(m.fs.tsro_header)
-    # # report_ro_train(m.fs.train[1])
-    # report_separator(m.fs.tsro_feed_separator)
-    # x = pyunits.convert(m.fs.feed.properties[0].flow_vol_phase["Liq"], to_units=pyunits.gallons / pyunits.minute)
-    # print(f"\nFeed Flowrate: {x():.1f} gpm\n")
+    return m
 
-    # m = build_wrd_system(num_stages=num_stages, date=date)
-    # add_connections(m)
-    # set_wrd_inlet_conditions(m)
-    # set_wrd_operating_conditions(m)
-    # set_wrd_system_scaling(m)
-    # calculate_scaling_factors(m)
-    # initialize_wrd_system(m)
-    # m.fs.ro_system.feed.display()
 
-    # # assert False
+if __name__ == "__main__":
 
-    # try:
-    #     results = solve(m)
-    #     assert_optimal_termination(results)
-    # except:
-    #     print_infeasible_constraints(m)
-
-    # # report_wrd(m)
+    m = main()
