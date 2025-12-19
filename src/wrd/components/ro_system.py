@@ -41,7 +41,7 @@ def build_ro_system(
     num_stages=3,
     split_fractions=None,
     prop_package=None,
-    file="wrd_ro_inputs_8_19_21.yaml",
+    file="wrd_inputs_8_19_21.yaml",
 ):
 
     if m is None:
