@@ -17,11 +17,11 @@ def full_wrd_system_8_19_21():
 
 def _get_stage_objects(m, train_idx, stage_idx):
     if stage_idx < 3:
-       train = m.fs.train[train_idx]
-       stage = train.stage[stage_idx]
+        train = m.fs.train[train_idx]
+        stage = train.stage[stage_idx]
     else:
-        stage = m.fs.tsro_train[train_idx]     
-    pump = stage.pump  
+        stage = m.fs.tsro_train[train_idx]
+    pump = stage.pump
     perm_flow = stage.ro.unit.mixed_permeate[0].flow_vol_phase["Liq"]
     return pump, perm_flow
 
@@ -51,8 +51,10 @@ def test_wrd_treatment_train_PRO_pump_1(full_wrd_system_8_19_21):
 @pytest.mark.component
 def test_wrd_treatment_train_PRO1(full_wrd_system_8_19_21):
     _, perm_flow = _get_stage_objects(full_wrd_system_8_19_21, 1, 1)
-    expected_perm_flow =  1608.2 * pyunits.gal / pyunits.minute
-    expected_perm_flow = pyunits.convert(expected_perm_flow,to_units=pyunits.m**3 / pyunits.s)
+    expected_perm_flow = 1608.2 * pyunits.gal / pyunits.minute
+    expected_perm_flow = pyunits.convert(
+        expected_perm_flow, to_units=pyunits.m**3 / pyunits.s
+    )
     # Units check
     assert_units_consistent(perm_flow + expected_perm_flow)
     assert value(perm_flow) == pytest.approx(value(expected_perm_flow), rel=0.15)

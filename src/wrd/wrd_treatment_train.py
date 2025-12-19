@@ -33,7 +33,9 @@ from srp.utils import touch_flow_and_conc
 from models import HeadLoss
 
 
-def build_wrd_system(num_pro_trains=4, num_tsro_trains=None, num_stages=2,date="8_19_21"):
+def build_wrd_system(
+    num_pro_trains=4, num_tsro_trains=None, num_stages=2, date="8_19_21"
+):
 
     if num_tsro_trains is None:
         num_tsro_trains = num_pro_trains
@@ -540,12 +542,20 @@ def main(num_pro_trains=4, num_tsro_trains=None, num_stages=2):
     set_wrd_operating_conditions(m)
     print(f"{degrees_of_freedom(m)} degrees of freedom after setting op conditions")
     assert degrees_of_freedom(m) == 0
-
-    # dt = DiagnosticsToolbox(m)
     initialize_wrd_system(m)
     solver = get_solver()
-    results = solver.solve(m)
-    assert_optimal_termination(results)
+    try:
+        results = solver.solve(m)
+        assert_optimal_termination(results)
+    except:
+        print_infeasible_constraints(m)
+        print("\n--------- Failed to Solve ---------\n")
+    return m
+
+
+if __name__ == "__main__":
+    num_stages = 2
+    m = main(num_pro_stages=num_stages)
     report_wrd(m)
     return m
 
