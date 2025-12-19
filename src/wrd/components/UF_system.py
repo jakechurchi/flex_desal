@@ -112,6 +112,10 @@ def build_uf_system(
             file=file,
         )
 
+    m.fs.total_uf_pump_power = Expression(
+        expr=sum(m.fs.uf_train[i].pump.unit.work_mechanical[0] for i in m.fs.uf_trains)
+    )
+
     for i, outlet in enumerate(outlet_list, start=1):
 
         sep_out = m.fs.uf_feed_separator.find_component(f"{outlet}")
@@ -282,6 +286,7 @@ def report_uf_system(m, w=30):
         f'{f"Final Brine Conc":<{w}s}{value(pyunits.convert(m.fs.disposal.properties[0].conc_mass_phase_comp["Liq", "NaCl"], to_units=pyunits.mg / pyunits.L)):<{w}.3f}{"mg/L"}'
     )
     print(f'{f"Overall Recovery":<{w}s}{value(m.fs.recovery_vol_uf)*100:<{w}.3f}{"%"}')
+    print(f'{f"Total UF Pump Power":<{w}s}{value(pyunits.convert(m.fs.total_uf_pump_power, to_units=pyunits.kW)):<{w}.3f}{"kW"}')
 
 
 def report_uf_system_pumps(m, w=30):
@@ -324,4 +329,5 @@ def main(add_costing=False):
 
 if __name__ == "__main__":
     m = main(add_costing=True)
+    m.fs.total_uf_pump_power.display()
     # m.fs.uf_feed_separator.display()
