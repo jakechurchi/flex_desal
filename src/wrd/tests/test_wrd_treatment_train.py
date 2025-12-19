@@ -17,11 +17,11 @@ def full_wrd_system_8_19_21():
 
 def _get_stage_objects(m, train_idx, stage_idx):
     if stage_idx < 3:
-        train = m.fs.train[train_idx]
-        stage = train.stage[stage_idx]
+       train = m.fs.train[train_idx]
+       stage = train.stage[stage_idx]
     else:
-        stage = m.fs.tsro_train[train_idx]
-    pump = stage.pump
+        stage = m.fs.tsro_train[train_idx]     
+    pump = stage.pump  
     perm_flow = stage.ro.unit.mixed_permeate[0].flow_vol_phase["Liq"]
     return pump, perm_flow
 
@@ -37,9 +37,11 @@ def _get_stage_objects(m, train_idx, stage_idx):
 
 
 # Current test only checks first stage of first train pump power and perm flow
+# Current test only checks first stage of first train pump power and perm flow
 @pytest.mark.component
 def test_wrd_treatment_train_PRO_pump_1(full_wrd_system_8_19_21):
     pump, _ = _get_stage_objects(full_wrd_system_8_19_21, 1, 1)
+    power = pyunits.convert(pump.unit.work_mechanical[0], to_units=pyunits.kW)
     power = pyunits.convert(pump.unit.work_mechanical[0], to_units=pyunits.kW)
     expected_power = 196.25 * pyunits.kW
     # Units check
