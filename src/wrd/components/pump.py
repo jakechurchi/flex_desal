@@ -254,6 +254,19 @@ def initialize_pump(blk):
     blk.product.initialize()
 
 
+def add_pump_costing(blk, costing_package=None):
+
+    if costing_package is None:
+        m = blk.model()
+        costing_package = m.fs.costing
+
+    # Why is this line below not used?
+    # blk.unit.costing = UnitModelCostingBlock(flowsheet_costing_block=costing_package)
+    costing_package.cost_flow(
+        pyunits.convert(blk.unit.work_mechanical[0], to_units=pyunits.kW), "electricity"
+    )
+
+
 def report_pump(blk, w=30):
     title = "Pump Report"
     side = int(((3 * w) - len(title)) / 2) - 1
@@ -267,6 +280,8 @@ def report_pump(blk, w=30):
     pin = blk.unit.control_volume.properties_in[0].pressure
     deltaP = blk.unit.deltaP[0]
     pout = blk.unit.control_volume.properties_out[0].pressure
+    m = blk.model()
+
     print(
         f'{f"Inlet Flow":<{w}s}{value(pyunits.convert(flow_in, to_units=pyunits.gallons /pyunits.minute)):<{w}.3f}{"gpm"}'
     )
@@ -284,17 +299,10 @@ def report_pump(blk, w=30):
         f'{f"Work Mech. (kW)":<{w}s}{value(pyunits.convert(work, to_units=pyunits.kW)):<{w}.3f}{"kW"}'
     )
     print(f'{f"Efficiency (-)":<{w}s}{value(blk.unit.efficiency_pump[0]):<{w}.3f}{"-"}')
-
-
-def add_pump_costing(blk, costing_package=None):
-
-    if costing_package is None:
-        m = blk.model()
-        costing_package = m.fs.costing
-
-    # blk.unit.costing = UnitModelCostingBlock(flowsheet_costing_block=costing_package)
-    costing_package.cost_flow(
-        pyunits.convert(blk.unit.work_mechanical[0], to_units=pyunits.kW), "electricity"
+    # Is SEC not appearing on m.fs.costing.display a known issue?
+    SEC = m.fs.costing.SEC
+    print(
+        f'{f"Specific Energy (SEC)":<{w}s}{value(pyunits.convert(SEC, to_units=pyunits.kWh / pyunits.m**3)):<{w}.3f}{"kWh/m3"}'
     )
 
 
