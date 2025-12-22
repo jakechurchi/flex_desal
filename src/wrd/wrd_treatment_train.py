@@ -79,8 +79,10 @@ def build_wrd_system(
 
     # TSRO System
     m.fs.tsro_trains = Set(initialize=range(1, num_tsro_trains + 1))
-    m.fs.tsro_header = StateJunction(property_package=m.fs.properties)
-    # m.fs.tsro_header = HeadLoss(property_package=m.fs.properties)
+
+    # m.fs.tsro_header = StateJunction(property_package=m.fs.properties)
+    m.fs.tsro_header = HeadLoss(property_package=m.fs.properties)
+
     touch_flow_and_conc(m.fs.tsro_header)
     m.fs.tsro_feed_separator = Separator(
         property_package=m.fs.properties,
