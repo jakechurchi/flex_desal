@@ -69,7 +69,7 @@ def get_chem_data(chem_data, chemical_name, default=None):
         "chemical_dosage",
         chemical_name,
     )
-    
+
     return chem_config
 
 
@@ -80,7 +80,7 @@ def build_system(chemical_name=None):
     m.fs.costing = WaterTAPCosting()
     m.fs.properties = NaClParameterBlock()
 
-    #will need to add to wrd flowsheet too
+    # will need to add to wrd flowsheet too
     config_file_name = "chemical_addition.yaml"
     config = get_config_file(config_file_name)
     m.fs.chem_data = load_config(config)
@@ -116,7 +116,7 @@ def build_system(chemical_name=None):
 
 
 def build_chem_addition(blk, chemical_name=None, prop_package=None, file=None):
-    
+
     print(f'\n{f"=======> BUILDING {chemical_name} ADDITION UNIT <=======":^60}\n')
 
     m = blk.model()
@@ -127,8 +127,8 @@ def build_chem_addition(blk, chemical_name=None, prop_package=None, file=None):
         # raise ValueError("chemical_name must be provided to build_chem_addition")
         name = "default_chemical"
     else:
-        name = chemical_name.replace("_", " ").upper() # Why is this here?
- 
+        name = chemical_name.replace("_", " ").upper()  # Why is this here?
+
     blk.feed = StateJunction(property_package=prop_package)
     touch_flow_and_conc(blk.feed)
 
@@ -230,7 +230,8 @@ def initialize_chem_addition(blk):
 
 
 def add_chem_addition_costing(
-    blk, costing_package=None, chem_cost=None, chem_purity=None):
+    blk, costing_package=None, chem_cost=None, chem_purity=None
+):
 
     if chem_cost is None:
         chem_cost = blk.chem_config["unit_cost"]
@@ -272,7 +273,7 @@ def add_chem_addition_costing(
 
 
 def main(
-    chemical_name = "ammonium_sulfate",
+    chemical_name="ammonium_sulfate",
     Qin=2637,
     Cin=0.5,
     # If hard coding, need to pass units somewhere
@@ -282,10 +283,11 @@ def main(
 ):
     m = build_system(chemical_name=chemical_name)
     add_chem_addition_costing(
-        m.fs.chem_addition, chem_cost=chem_cost, chem_purity=chem_purity)
+        m.fs.chem_addition, chem_cost=chem_cost, chem_purity=chem_purity
+    )
     calculate_scaling_factors(m)
     set_inlet_conditions(m, Qin=Qin, Cin=Cin)
-    set_chem_addition_op_conditions(m.fs.chem_addition,dose=dose)
+    set_chem_addition_op_conditions(m.fs.chem_addition, dose=dose)
     initialize_system(m)
     m.fs.costing.cost_process()
     assert degrees_of_freedom(m) == 0

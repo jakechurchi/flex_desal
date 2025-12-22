@@ -15,14 +15,14 @@ solver = get_solver()
 @pytest.mark.component
 def test_chem_addition_chem_flow():
     # These costs are based directly on Qin=2637 and yaml inputs, so values should agree very closely
-    mass_flow_rates= {
-            "ammonium_sulfate": 8.32e-5,
-            "sodium_hypochlorite": 6.65e-4,
-            "sulfuric_acid": 1.60e-2,
-            "scale_inhibitor": 7.49e-4,
-            "calcium_hydroxide": 7.82e-3,
-            "sodium_hydroxide": 4.99e-4,
-            "sodium_bisulfite": 6.65e-4,
+    mass_flow_rates = {
+        "ammonium_sulfate": 8.32e-5,
+        "sodium_hypochlorite": 6.65e-4,
+        "sulfuric_acid": 1.60e-2,
+        "scale_inhibitor": 7.49e-4,
+        "calcium_hydroxide": 7.82e-3,
+        "sodium_hydroxide": 4.99e-4,
+        "sodium_bisulfite": 6.65e-4,
     }
     for i, chem in enumerate(mass_flow_rates.keys(), 1):
         m = ca.main(
@@ -32,11 +32,13 @@ def test_chem_addition_chem_flow():
             dose=None,
             chem_cost=None,
             chem_purity=None,
-            )
+        )
 
         chem_mass_flow = m.fs.costing.find_component(f"aggregate_flow_{chem}")
         expected_mass_flow = mass_flow_rates[chem] * pyunits.kg / pyunits.s
-        assert  pytest.approx(value(chem_mass_flow), rel=.15) == value(expected_mass_flow)  # $/yr
+        assert pytest.approx(value(chem_mass_flow), rel=0.15) == value(
+            expected_mass_flow
+        )  # $/yr
 
 
 @pytest.mark.component
@@ -44,13 +46,13 @@ def test_chem_addition_costs():
     # These costs are based directly on Qin=2637 and yaml inputs, so values should agree very closely (But they don't)
     # Once resolved, these should be switched to provided monthly data.
     annual_costs = {
-            "ammonium_sulfate": 2662,
-            "sodium_hypochlorite": 27074,
-            "sulfuric_acid": 106556,
-            "scale_inhibitor": 54393,
-            "calcium_hydroxide": 567705,
-            "sodium_hydroxide": 37373,
-            "sodium_bisulfite": 29499,
+        "ammonium_sulfate": 2662,
+        "sodium_hypochlorite": 27074,
+        "sulfuric_acid": 106556,
+        "scale_inhibitor": 54393,
+        "calcium_hydroxide": 567705,
+        "sodium_hydroxide": 37373,
+        "sodium_bisulfite": 29499,
     }
     for i, chem in enumerate(annual_costs.keys(), 1):
         # All of this stuff should be in main??
@@ -80,7 +82,7 @@ def test_chem_addition_costs():
         # assert degrees_of_freedom(m) == 0
         # results = solver.solve(m)
         # assert_optimal_termination(results)
-        
+
         m = ca.main(
             chemical_name=chem,
             Qin=2637,
@@ -88,11 +90,11 @@ def test_chem_addition_costs():
             dose=None,
             chem_cost=None,
             chem_purity=None,
-            )
+        )
 
         operational_cost = m.fs.costing.total_operating_cost()
         expected_cost = annual_costs[chem]
-        assert  pytest.approx(value(operational_cost), rel=.15) == expected_cost  # $/yr
+        assert pytest.approx(value(operational_cost), rel=0.15) == expected_cost  # $/yr
 
 
 # Don't understand what this is testing-->

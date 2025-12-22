@@ -56,7 +56,7 @@ def build_wrd_system(
 
     m.fs.properties = NaClParameterBlock()
     m.fs.costing = WaterTAPCosting()
-    
+
     # Add units
     m.fs.feed = Feed(property_package=m.fs.properties)
     touch_flow_and_conc(m.fs.feed)
@@ -314,7 +314,8 @@ def set_wrd_operating_conditions(m):
     # Operating conditions
     for chem_name in m.fs.chemical_list:
         set_chem_addition_op_conditions(
-            blk=m.fs.find_component(chem_name + "_addition"))
+            blk=m.fs.find_component(chem_name + "_addition")
+        )
 
     set_uf_system_op_conditions(m)
 
@@ -449,7 +450,10 @@ def add_wrd_system_costing(m):
     cost_uv_aop(m.fs.UV_aop)
     cost_decarbonator(m.fs.decarbonator)
     for chem_name in m.fs.chemical_list:
-        add_chem_addition_costing(blk=m.fs.find_component(chem_name + "_addition"), costing_package=m.fs.costing)
+        add_chem_addition_costing(
+            blk=m.fs.find_component(chem_name + "_addition"),
+            costing_package=m.fs.costing,
+        )
 
     m.fs.costing.cost_process()
     m.fs.costing.add_LCOW(m.fs.product.properties[0].flow_vol_phase["Liq"])
