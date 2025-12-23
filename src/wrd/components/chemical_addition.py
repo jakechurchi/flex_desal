@@ -34,14 +34,6 @@ __all__ = [
 
 solver = get_solver()
 
-# What's this doing here?
-current_script_path = os.path.abspath(__file__)
-current_directory = os.path.dirname(current_script_path)
-parent_directory = os.path.dirname(current_directory)
-default_chem_addition_config_file = os.path.join(
-    parent_directory, "meta_data", "chemical_addition.yaml"
-)
-
 
 def get_chem_data(chem_data, chemical_name, default=None):
     chem_config = {}
@@ -82,7 +74,6 @@ def build_system(chemical_name=None):
     m.fs.costing.base_period = pyunits.month
     m.fs.properties = NaClParameterBlock()
 
-    # will need to add to wrd flowsheet too
     config_file_name = "chemical_addition.yaml"
     config = get_config_file(config_file_name)
     m.fs.chem_data = load_config(config)
@@ -119,23 +110,21 @@ def build_system(chemical_name=None):
 
 def build_chem_addition(blk, chemical_name=None, prop_package=None, file=None):
 
-    print(f'\n{f"=======> BUILDING {chemical_name} ADDITION UNIT <=======":^60}\n')
-
     m = blk.model()
     if prop_package is None:
         prop_package = m.fs.properties
 
     if chemical_name is None:
-        # raise ValueError("chemical_name must be provided to build_chem_addition")
-        name = "default_chemical"
-    else:
-        name = chemical_name.replace("_", " ").upper()  # Why is this here?
+        chemical_name = "default_chemical"
 
+    name = chemical_name.replace("_", " ").upper()
+    print(f'\n{f"=======> BUILDING {name} ADDITION UNIT <=======":^60}\n')
+    
     blk.feed = StateJunction(property_package=prop_package)
     touch_flow_and_conc(blk.feed)
 
     blk.chem_config = get_chem_data(m.fs.chem_data, chemical_name, None)
-    # should dose also be set here?
+    
     blk.unit = ChemicalAddition(
         property_package=prop_package,
         chemical=chemical_name,
@@ -180,37 +169,6 @@ def set_chem_addition_op_conditions(blk, dose=None):
     blk.unit.dose.fix(dose)
 
 
-def report_chem_addition(blk, w=35):
-    chem_name = blk.unit.config.chemical.replace("_", " ").title()
-    feed_flow = pyunits.convert(
-        blk.unit.properties[0].flow_vol_phase["Liq"],
-        to_units=pyunits.gallon / pyunits.min,
-    )
-    title = f"{chem_name} Addition Report"
-    side = int(((3 * w) - len(title)) / 2) - 1
-    header = "=" * side + f" {title} " + "=" * side
-    print(f"\n{header}\n")
-    print(f'{"Parameter":<{w}s}{"Value":<{w}s}{"Units":<{w}s}')
-    print(f"{'-' * (3 * w)}")
-    print(f'{f"Inlet Flow":<{w}s}{f"{value(feed_flow):<{w}.2f}gpm"}')
-    print(
-        f'{f"{chem_name} Dose":<{w}s}{f"{value(pyunits.convert(blk.unit.dose, to_units=pyunits.mg/pyunits.liter)):<{w}.2f}mg/L"}'
-    )
-    print(
-        f'{f"{chem_name} Mass Flow":<{w}s}{value(blk.unit.chemical_flow_mass):<{w}.3e}{f"{pyunits.get_units(blk.unit.chemical_flow_mass)}"}'
-    )
-    print(
-        f'{f"{chem_name} Vol. Flow":<{w}s}{value(blk.unit.chemical_soln_flow_vol):<{w}.3e}{f"{pyunits.get_units(blk.unit.chemical_soln_flow_vol)}"}'
-    )
-    print(
-        f'{f"{chem_name} Pump":<{w}s}{value(blk.unit.pumping_power):<{w}.3e}{f"{pyunits.get_units(blk.unit.pumping_power)}"}'
-    )
-    m = blk.model()
-    print(
-        f'{"Chem Addition Operating Cost":<{w}s}{f"${value(m.fs.costing.aggregate_flow_costs[blk.unit.config.chemical]):<{w}.3f}$/month"}'
-    )
-
-
 def initialize_system(blk):
     blk.fs.feed.initialize()
     propagate_state(blk.fs.feed_to_chem_addition)
@@ -244,6 +202,7 @@ def add_chem_addition_costing(
         chem_purity = blk.chem_config["ratio_in_solution"]
         if chem_purity is None:
             chem_purity = 1.0  # assume 100% purity if not provided
+    
     m = blk.model()
     if costing_package is None:
         costing_package = m.fs.costing
@@ -261,7 +220,7 @@ def add_chem_addition_costing(
             mutable=True,
             doc=f"{blk.unit.config.chemical.replace('_', ' ').title()} purity",
         )
-        # Plz review
+        
         costing_package.register_flow_type(
             blk.unit.config.chemical, blk.unit.cost / blk.unit.purity
         )
@@ -272,6 +231,37 @@ def add_chem_addition_costing(
 
     costing_package.cost_flow(blk.unit.chemical_flow_mass, blk.unit.config.chemical)
     costing_package.cost_flow(blk.unit.pumping_power, "electricity")
+
+
+def report_chem_addition(blk, w=35):
+    chem_name = blk.unit.config.chemical.replace("_", " ").title()
+    feed_flow = pyunits.convert(
+        blk.unit.properties[0].flow_vol_phase["Liq"],
+        to_units=pyunits.gallon / pyunits.min,
+    )
+    title = f"{chem_name} Addition Report"
+    side = int(((3 * w) - len(title)) / 2) - 1
+    header = "=" * side + f" {title} " + "=" * side
+    print(f"\n{header}\n")
+    print(f'{"Parameter":<{w}s}{"Value":<{w}s}{"Units":<{w}s}')
+    print(f"{'-' * (3 * w)}")
+    print(f'{f"Inlet Flow":<{w}s}{f"{value(feed_flow):<{w}.2f}gpm"}')
+    print(
+        f'{f"{chem_name} Dose":<{w}s}{f"{value(pyunits.convert(blk.unit.dose, to_units=pyunits.mg/pyunits.liter)):<{w}.2f}mg/L"}'
+    )
+    print(
+        f'{f"{chem_name} Mass Flow":<{w}s}{value(blk.unit.chemical_flow_mass):<{w}.3e}{f"{pyunits.get_units(blk.unit.chemical_flow_mass)}"}'
+    )
+    print(
+        f'{f"{chem_name} Vol. Flow":<{w}s}{value(blk.unit.chemical_soln_flow_vol):<{w}.3e}{f"{pyunits.get_units(blk.unit.chemical_soln_flow_vol)}"}'
+    )
+    print(
+        f'{f"{chem_name} Pump":<{w}s}{value(blk.unit.pumping_power):<{w}.3e}{f"{pyunits.get_units(blk.unit.pumping_power)}"}'
+    )
+    m = blk.model()
+    print(
+        f'{"Chem Addition Operating Cost":<{w}s}{f"${value(m.fs.costing.aggregate_flow_costs[blk.unit.config.chemical]):<{w}.3f}$/month"}'
+    )
 
 
 def main(
@@ -302,14 +292,3 @@ def main(
 if __name__ == "__main__":
     chem = "ammonium_sulfate"
     m = main(chemical_name=chem)
-
-    # import yaml
-    # _f = "/Users/ksitterl/Documents/Python/flex_desal/flex_desal/src/wrd/meta_data/chemical_addition.yaml"
-    # with open(_f, "r") as f:
-    #     data = yaml.safe_load(f)
-
-    # print(data)
-    # print(type(data))  # <class 'dict'>
-    # print(data[m.fs.chem_addition.unit.config.chemical])
-    # print(parent_directory)
-    # print(default_chem_addition_config_file)

@@ -54,34 +54,6 @@ def test_chem_addition_costs():
         "sodium_bisulfite": 2458,
     }
     for i, chem in enumerate(monthly_costs.keys(), 1):
-        # All of this stuff should be in main??
-
-        # Dummy data just for testing
-        # dose = None, #0.01 * i
-        # cost = None, #0.5 * i
-        # purity = None, #1
-
-        # m = ca.build_system(chemical_name=chem)
-        # ca.calculate_scaling_factors(m)
-        # ca.set_inlet_conditions(m)
-        # ca.set_chem_addition_op_conditions(m.fs.chem_addition, dose=dose)
-        # ca.initialize_system(m)
-        # assert degrees_of_freedom(m) == 0
-        # results = solver.solve(m)
-        # assert_optimal_termination(results)
-        # ca.report_chem_addition(m.fs.chem_addition, w=40)
-        # chem_registered = chem in m.fs.costing._registered_flows.keys()
-        # ca.add_chem_addition_costing(
-        #     m.fs.chem_addition, chem_cost=cost, chem_purity=purity
-        # )
-        # assert not chem_registered
-        # m.fs.costing.cost_process()
-        # m.fs.costing.add_LCOW(m.fs.product.properties[0].flow_vol_phase["Liq"])
-        # m.fs.costing.initialize()
-        # assert degrees_of_freedom(m) == 0
-        # results = solver.solve(m)
-        # assert_optimal_termination(results)
-
         m = ca.main(
             chemical_name=chem,
             Qin=2637,
