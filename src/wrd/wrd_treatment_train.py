@@ -33,7 +33,9 @@ from srp.utils import touch_flow_and_conc
 from models import HeadLoss
 
 
-def build_wrd_system(num_pro_trains=4, num_tsro_trains=None, num_stages=2):
+def build_wrd_system(
+    num_pro_trains=4, num_tsro_trains=None, num_stages=2, file="wrd_inputs_8_19_21.yaml"
+):
 
     if num_tsro_trains is None:
         num_tsro_trains = num_pro_trains
@@ -44,8 +46,8 @@ def build_wrd_system(num_pro_trains=4, num_tsro_trains=None, num_stages=2):
     m.num_stages = num_stages
     m.fs = FlowsheetBlock(dynamic=False)
 
-    config_file_name = get_config_file("wrd_feed_flow.yaml")
-    m.fs.config_data = load_config(config_file_name)
+    config = get_config_file(file)
+    m.fs.config_data = load_config(config)
     m.fs.properties = NaClParameterBlock()
 
     # Add units
@@ -76,6 +78,7 @@ def build_wrd_system(num_pro_trains=4, num_tsro_trains=None, num_stages=2):
         prop_package=m.fs.properties,
     )
 
+    # Isn't this missing the TSRO system? Maybe add in with the Headloss component.
     m.fs.total_system_pump_power = Expression(
         expr=pyunits.convert(
             m.fs.total_uf_pump_power + m.fs.total_ro_pump_power, to_units=pyunits.kW
@@ -272,14 +275,26 @@ def add_wrd_connections(m):
     TransformationFactory("network.expand_arcs").apply_to(m)
 
 
-def set_wrd_inlet_conditions(m, Qin=2637, Cin=0.5, file="wrd_ro_inputs_8_19_21.yaml"):
+def set_wrd_inlet_conditions(m, Qin=None, Cin=None, file="wrd_inputs_8_19_21.yaml"):
+    # IMO it makes sense Qin to be from the yaml for the wrd flowsheet so all case study inputs are in one place.
+    # Other component files Q and C can be hard coded for testing.
+    if Qin is None:
+        Qin = get_config_value(m.fs.config_data, "feed_flow_water", "feed_stream")
+    else:
+        Qin = Qin * pyunits.gallons / pyunits.minute
 
+    if Cin is None:
+        Cin = get_config_value(
+            m.fs.config_data, "feed_conductivity", "feed_stream"
+        ) * get_config_value(
+            m.fs.config_data, "feed_conductivity_conversion", "feed_stream"
+        )
+    else:
+        Cin = Cin * pyunits.g / pyunits.L
     m.fs.feed.properties.calculate_state(
         var_args={
-            ("flow_vol_phase", ("Liq")): (Qin * m.num_pro_trains)
-            * pyunits.gallons
-            / pyunits.minute,
-            ("conc_mass_phase_comp", ("Liq", "NaCl")): Cin * pyunits.g / pyunits.L,
+            ("flow_vol_phase", ("Liq")): (Qin * m.num_pro_trains),
+            ("conc_mass_phase_comp", ("Liq", "NaCl")): Cin,
             ("pressure", None): 101325,
             ("temperature", None): 273.15 + 27,
         },
@@ -525,12 +540,12 @@ def report_wrd(m, w=30):
     )
 
 
-def main(num_pro_trains=4, num_tsro_trains=None, num_stages=2):
+def main(num_pro_trains=4, num_tsro_trains=None, num_pro_stages=2):
 
     m = build_wrd_system(
         num_pro_trains=num_pro_trains,
         num_tsro_trains=num_tsro_trains,
-        num_stages=num_stages,
+        num_stages=num_pro_stages,
     )
     add_wrd_connections(m)
     set_wrd_system_scaling(m)
@@ -540,16 +555,18 @@ def main(num_pro_trains=4, num_tsro_trains=None, num_stages=2):
     set_wrd_operating_conditions(m)
     print(f"{degrees_of_freedom(m)} degrees of freedom after setting op conditions")
     assert degrees_of_freedom(m) == 0
-
-    # dt = DiagnosticsToolbox(m)
     initialize_wrd_system(m)
     solver = get_solver()
-    results = solver.solve(m)
-    assert_optimal_termination(results)
-    report_wrd(m)
+    try:
+        results = solver.solve(m)
+        assert_optimal_termination(results)
+    except:
+        print_infeasible_constraints(m)
+        print("\n--------- Failed to Solve ---------\n")
     return m
 
 
 if __name__ == "__main__":
-
-    m = main()
+    num_pro_stages = 2
+    m = main(num_pro_stages=num_pro_stages)
+    report_wrd(m)
