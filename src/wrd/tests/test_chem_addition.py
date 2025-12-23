@@ -93,7 +93,9 @@ def test_chem_addition_costs():
 
         operational_cost = value(m.fs.costing.aggregate_flow_costs[chem])
         expected_cost = monthly_costs[chem]
-        assert pytest.approx(value(operational_cost), rel=0.05) == expected_cost  # $/month
+        assert (
+            pytest.approx(value(operational_cost), rel=0.05) == expected_cost
+        )  # $/month
 
 
 # Don't understand what this is testing-->
