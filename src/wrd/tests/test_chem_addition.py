@@ -14,7 +14,7 @@ solver = get_solver()
 
 @pytest.mark.component
 def test_chem_addition_chem_flow():
-    # These costs are based directly on Qin=2637 and yaml inputs, so values should agree very closely
+    # These flows are based directly on Qin=2637 and yaml inputs, so values should agree very closely
     mass_flow_rates = {
         "ammonium_sulfate": 8.32e-5,
         "sodium_hypochlorite": 6.65e-4,
