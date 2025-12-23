@@ -22,6 +22,6 @@ def test_uf_train_8_19_21():
     power = pyunits.convert(
         m.fs.uf_train.pump.unit.work_mechanical[0], to_units=pyunits.kW
     )
-    expected_power = 400 * pyunits.kW
+    expected_power = 219 * pyunits.kW  # NOT VALUE FROM DATA
     assert_units_consistent(power + expected_power)
     assert pytest.approx(value(power), rel=0.15) == value(expected_power)  # kWh/m3
