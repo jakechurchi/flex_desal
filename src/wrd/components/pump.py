@@ -260,9 +260,7 @@ def add_pump_costing(blk, costing_package=None):
         m = blk.model()
         costing_package = m.fs.costing
 
-    costing_package.cost_flow(
-        pyunits.convert(blk.unit.work_mechanical[0], to_units=pyunits.kW), "electricity"
-    )
+    blk.unit.costing = UnitModelCostingBlock(flowsheet_costing_block=costing_package)
 
 
 def report_pump(blk, w=30, add_costing=True):
