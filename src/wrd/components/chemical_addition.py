@@ -10,7 +10,7 @@ from pyomo.environ import (
 )
 from pyomo.network import Arc
 
-from idaes.core import FlowsheetBlock
+from idaes.core import FlowsheetBlock, UnitModelCostingBlock
 from idaes.core.util.initialization import propagate_state
 from idaes.core.util.scaling import calculate_scaling_factors
 from idaes.models.unit_models import Product, Feed, StateJunction
@@ -207,30 +207,10 @@ def add_chem_addition_costing(
     if costing_package is None:
         costing_package = m.fs.costing
 
-    if blk.unit.config.chemical not in costing_package._registered_flows.keys():
-        blk.unit.cost = Param(
-            initialize=chem_cost,
-            units=pyunits.get_units(chem_cost),
-            mutable=True,
-            doc=f"{blk.unit.config.chemical.replace('_', ' ').title()} cost",
-        )
-        blk.unit.purity = Param(
-            initialize=chem_purity,
-            units=pyunits.get_units(chem_purity),
-            mutable=True,
-            doc=f"{blk.unit.config.chemical.replace('_', ' ').title()} purity",
-        )
+    blk.unit.costing = UnitModelCostingBlock(flowsheet_costing_block=costing_package)
 
-        costing_package.register_flow_type(
-            blk.unit.config.chemical, blk.unit.cost / blk.unit.purity
-        )
-
-        chem_name = blk.unit.config.chemical
-        cost_var = getattr(m.fs.costing, f"{chem_name}_cost")
-        cost_var.set_value(blk.unit.cost)
-
-    costing_package.cost_flow(blk.unit.chemical_flow_mass, blk.unit.config.chemical)
-    costing_package.cost_flow(blk.unit.pumping_power, "electricity")
+    cost_var = getattr(m.fs.costing, f"{blk.unit.config.chemical}")
+    cost_var.cost.fix(chem_cost)
 
 
 def report_chem_addition(blk, w=35):
@@ -258,7 +238,13 @@ def report_chem_addition(blk, w=35):
     print(
         f'{f"{chem_name} Pump":<{w}s}{value(blk.unit.pumping_power):<{w}.3e}{f"{pyunits.get_units(blk.unit.pumping_power)}"}'
     )
+
     m = blk.model()
+    cost_var = getattr(m.fs.costing, f"{blk.unit.config.chemical}")
+    unit_cost = pyunits.convert(cost_var.cost, to_units=pyunits.USD_2021 / pyunits.kg)
+    print(
+        f'{f"{chem_name} unit cost":<{w}s}{value(unit_cost):<{w}.3f}{f"{pyunits.get_units(unit_cost)}"}'
+    )
     print(
         f'{"Chem Addition Operating Cost":<{w}s}{f"${value(m.fs.costing.aggregate_flow_costs[blk.unit.config.chemical]):<{w}.3f}$/month"}'
     )
@@ -274,6 +260,9 @@ def main(
     chem_purity=None,  # 0.9,
 ):
     m = build_system(chemical_name=chemical_name)
+    # Add units to chem_cost after costing system defines currency units
+    if chem_cost is not None:
+        chem_cost = chem_cost * pyunits.USD_2021 / pyunits.kg
     add_chem_addition_costing(
         m.fs.chem_addition, chem_cost=chem_cost, chem_purity=chem_purity
     )
@@ -290,5 +279,5 @@ def main(
 
 
 if __name__ == "__main__":
-    chem = "ammonium_sulfate"
+    chem = "scale_inhibitor"
     m = main(chemical_name=chem)
