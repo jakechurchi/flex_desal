@@ -192,18 +192,15 @@ def initialize_chem_addition(blk):
 
 
 def add_chem_addition_costing(
-    blk, costing_package=None, chem_cost=None, chem_purity=None
+    blk,
+    costing_package=None,
+    chem_cost=None,
 ):
 
     if chem_cost is None:
         chem_cost = blk.chem_config["unit_cost"]
         if chem_cost is None:
             raise ValueError("chem_cost must be provided to add_chem_addition_costing")
-
-    if chem_purity is None:
-        chem_purity = blk.chem_config["ratio_in_solution"]
-        if chem_purity is None:
-            chem_purity = 1.0  # assume 100% purity if not provided
 
     if costing_package is None:
         m = blk.model()
