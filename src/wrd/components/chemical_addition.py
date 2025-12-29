@@ -82,7 +82,9 @@ def build_system(chemical_name=None):
     touch_flow_and_conc(m.fs.feed)
 
     m.fs.chem_addition = FlowsheetBlock(dynamic=False)
-    build_chem_addition(m.fs.chem_addition, chemical_name, m.fs.properties)
+    build_chem_addition(
+        m.fs.chem_addition, chemical_name=chemical_name, prop_package=m.fs.properties
+    )
 
     m.fs.product = Product(property_package=m.fs.properties)
 
@@ -108,14 +110,14 @@ def build_system(chemical_name=None):
     return m
 
 
-def build_chem_addition(blk, chemical_name=None, prop_package=None, file=None):
+def build_chem_addition(blk, chemical_name=None, prop_package=None):
 
     m = blk.model()
     if prop_package is None:
         prop_package = m.fs.properties
 
     if chemical_name is None:
-        chemical_name = "default_chemical"
+        raise ValueError("Must specify a chemical for addition.")
 
     name = chemical_name.replace("_", " ").upper()
     print(f'\n{f"=======> BUILDING {name} ADDITION UNIT <=======":^60}\n')
@@ -203,14 +205,15 @@ def add_chem_addition_costing(
         if chem_purity is None:
             chem_purity = 1.0  # assume 100% purity if not provided
 
-    m = blk.model()
     if costing_package is None:
+        m = blk.model()
         costing_package = m.fs.costing
 
     blk.unit.costing = UnitModelCostingBlock(flowsheet_costing_block=costing_package)
 
-    cost_var = getattr(m.fs.costing, f"{blk.unit.config.chemical}")
-    cost_var.cost.fix(chem_cost)
+    cost_blk = costing_package.find_component(f"{blk.unit.config.chemical}")
+    cost_blk.cost.fix(chem_cost)
+    cost_blk.purity.fix(1)
 
 
 def report_chem_addition(blk, w=35):
@@ -240,14 +243,16 @@ def report_chem_addition(blk, w=35):
     )
 
     m = blk.model()
-    cost_var = getattr(m.fs.costing, f"{blk.unit.config.chemical}")
-    unit_cost = pyunits.convert(cost_var.cost, to_units=pyunits.USD_2021 / pyunits.kg)
-    print(
-        f'{f"{chem_name} unit cost":<{w}s}{value(unit_cost):<{w}.3f}{f"{pyunits.get_units(unit_cost)}"}'
-    )
-    print(
-        f'{"Chem Addition Operating Cost":<{w}s}{f"${value(m.fs.costing.aggregate_flow_costs[blk.unit.config.chemical]):<{w}.3f}$/month"}'
-    )
+    if m.fs.find_component("costing") is not None:
+        cost_var = m.fs.costing.find_component(f"{blk.unit.config.chemical}")
+        unit_cost = cost_var.cost
+        agg_flow_cost = m.fs.costing.aggregate_flow_costs[blk.unit.config.chemical]
+        print(
+            f'{f"{chem_name} Unit Cost":<{w}s}{value(unit_cost):<{w}.3f}{f"{pyunits.get_units(unit_cost)}"}'
+        )
+        print(
+            f'{f"{chem_name} Flow Cost":<{w}s}{f"{value(agg_flow_cost):<{w}.2f}"}{f"{pyunits.get_units(agg_flow_cost)}"}'
+        )
 
 
 def main(
@@ -261,8 +266,8 @@ def main(
 ):
     m = build_system(chemical_name=chemical_name)
     # Add units to chem_cost after costing system defines currency units
-    if chem_cost is not None:
-        chem_cost = chem_cost * pyunits.USD_2021 / pyunits.kg
+    # if chem_cost is not None:
+    #     chem_cost = chem_cost * pyunits.USD_2021 / pyunits.kg
     add_chem_addition_costing(
         m.fs.chem_addition, chem_cost=chem_cost, chem_purity=chem_purity
     )
