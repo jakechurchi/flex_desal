@@ -84,8 +84,8 @@ def build_wrd_system(
 
     # TSRO System
     m.fs.tsro_trains = Set(initialize=range(1, num_tsro_trains + 1))
-    m.fs.tsro_header = StateJunction(property_package=m.fs.properties)
-    # m.fs.tsro_header = HeadLoss(property_package=m.fs.properties)
+    # m.fs.tsro_header = StateJunction(property_package=m.fs.properties)
+    m.fs.tsro_header = HeadLoss(property_package=m.fs.properties)
     touch_flow_and_conc(m.fs.tsro_header)
     m.fs.tsro_feed_separator = Separator(
         property_package=m.fs.properties,
@@ -349,7 +349,7 @@ def set_wrd_operating_conditions(m):
 
     set_decarbonator_op_conditions(m.fs.decarbonator)
 
-    # m.fs.tsro_header.control_volume.deltaP[0].fix(-40* pyunits.psi)
+    m.fs.tsro_header.control_volume.deltaP[0].fix(-40* pyunits.psi)
     m.fs.ro_system_product_mixer.outlet.pressure[0].fix(101325)
     m.fs.tsro_brine_mixer.outlet.pressure[0].fix(101325)
     m.fs.disposal_mixer.outlet.pressure[0].fix(101325)
@@ -531,7 +531,8 @@ def report_wrd(m, w=30):
     report_ro_system(m, w=w)
 
     report_mixer(m.fs.ro_brine_mixer, w=w)
-    report_sj(m.fs.tsro_header, w=w)
+    # report_sj(m.fs.tsro_header, w=w)
+    report_cv(m.fs.tsro_header.control_volume, w=w)
 
     for t in m.fs.tsro_trains:
         title = f"TSRO Stage Report - Train {t}"
@@ -597,7 +598,25 @@ def main(num_pro_trains=1, num_tsro_trains=None, num_pro_stages=2):
     print(f"{degrees_of_freedom(m)} degrees of freedom after setting op conditions")
     assert degrees_of_freedom(m) == 0
     initialize_wrd_system(m)
-    add_wrd_system_costing(m)
+    # print(f"{degrees_of_freedom(m.fs.tsro_header)} degrees of freedom after initialization")
+
+    # from pyomo.network import Arc, Port
+    # from pyomo.environ import Block
+    # for p in m.fs.component_objects(Port):
+    #     arcs = p.arcs()
+    #     if len(arcs) == 0:
+    #         print(p.name)
+    # for b in m.fs.component_objects(Block, descend_into=False):
+    #     if "_expanded" in b.name:
+    #         continue
+    #     print(f"dof = {degrees_of_freedom(b)} for block {b.name}")
+        # arcs = p.arcs()
+        # if len(arcs) == 0:
+        #     print(p.name)
+    # print()
+    # m.fs.tsro_header.display()
+    # assert False
+    # add_wrd_system_costing(m)
 
     solver = get_solver()
     try:
