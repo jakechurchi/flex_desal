@@ -32,7 +32,6 @@ def test_chem_addition_chem_flow():
             Cin=0.5,
             dose=None,
             chem_cost=None,
-            chem_purity=None,
         )
 
         chem_mass_flow = m.fs.costing.find_component(f"aggregate_flow_{chem}")
@@ -61,7 +60,6 @@ def test_chem_addition_costs():
             Cin=0.5,
             dose=None,
             chem_cost=None,
-            chem_purity=None,
         )
 
         operational_cost = m.fs.costing.aggregate_flow_costs[chem]
