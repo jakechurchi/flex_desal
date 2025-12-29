@@ -260,7 +260,6 @@ def main(
         results = solver.solve(m, tee=True)
         assert_optimal_termination(results)
     report_uf_train(m.fs.uf_train, w=30)
-
     return m
 
 
