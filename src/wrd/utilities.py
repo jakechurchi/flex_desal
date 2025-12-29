@@ -5,7 +5,7 @@ from idaes.models.unit_models import Mixer, Separator
 
 
 __all__ = [
-    "report_cv",
+    "report_head_loss",
     "report_sj",
     "report_separator",
     "report_mixer",
@@ -15,9 +15,10 @@ __all__ = [
 ]
 
 
-def report_cv(cv, w=25):
+def report_head_loss(hl, w=25):
 
-    title = cv.name.replace("fs.", "").replace("_", " ").upper()
+    title = hl.name.replace("fs.", "").replace("_", " ").upper()
+    cv = hl.control_volume
 
     side = int(((3 * w) - len(title)) / 2) - 1
     header = "=" * side + f" {title} " + "=" * side
@@ -50,6 +51,7 @@ def report_cv(cv, w=25):
     print(f'{"INLET Flow":<{w}s}{f"{flow_in:<{w},.1f}"}{"gpm":<{w}s}')
     print(f'{"INLET NaCl":<{w}s}{f"{conc_in:<{w},.1f}"}{"mg/L":<{w}s}')
     print(f'{"INLET Pressure":<{w}s}{f"{p_in:<{w},.1f}"}{"psi":<{w}s}')
+
     flow_out = value(
         pyunits.convert(
             cv.properties_out[0].flow_vol_phase["Liq"],
@@ -66,11 +68,12 @@ def report_cv(cv, w=25):
         pyunits.convert(
             cv.properties_out[0].pressure,
             to_units=pyunits.psi,
-        )   
+        )
     )
     print(f'{"OUTLET Flow":<{w}s}{f"{flow_out:<{w},.1f}"}{"gpm":<{w}s}')
     print(f'{"OUTLET NaCl":<{w}s}{f"{conc_out:<{w},.1f}"}{"mg/L":<{w}s}')
     print(f'{"OUTLET Pressure":<{w}s}{f"{p_out:<{w},.1f}"}{"psi":<{w}s}')
+
 
 def report_sj(sj, w=25):
 
@@ -158,7 +161,7 @@ def report_mixer(mixer, w=25):
             ms[0].pressure,
             to_units=pyunits.psi,
         )
-    )   
+    )
     print(f'{"Outlet Flow":<{w}s}{f"{flow_out:<{w},.1f}"}{"gpm":<{w}s}')
     print(f'{"Outlet NaCl":<{w}s}{f"{conc_out:<{w},.1f}"}{"mg/L":<{w}s}')
     print(f'{"Outlet Pressure":<{w}s}{f"{p_out:<{w},.1f}"}{"psi":<{w}s}')
