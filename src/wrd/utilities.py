@@ -5,6 +5,7 @@ from idaes.models.unit_models import Mixer, Separator
 
 
 __all__ = [
+    "report_head_loss",
     "report_sj",
     "report_separator",
     "report_mixer",
@@ -12,6 +13,66 @@ __all__ = [
     "load_config",
     "get_config_file",
 ]
+
+
+def report_head_loss(hl, w=25):
+
+    title = hl.name.replace("fs.", "").replace("_", " ").upper()
+    cv = hl.control_volume
+
+    side = int(((3 * w) - len(title)) / 2) - 1
+    header = "=" * side + f" {title} " + "=" * side
+    print(f"\n{header}\n")
+    dp = value(
+        pyunits.convert(
+            cv.deltaP[0],
+            to_units=pyunits.psi,
+        )
+    )
+    print(f'{"Pressure Drop":<{w}s}{f"{dp:<{w}.1f}"}{"psi":<{w}s}')
+    flow_in = value(
+        pyunits.convert(
+            cv.properties_in[0].flow_vol_phase["Liq"],
+            to_units=pyunits.gallons / pyunits.minute,
+        )
+    )
+    conc_in = value(
+        pyunits.convert(
+            cv.properties_in[0].conc_mass_phase_comp["Liq", "NaCl"],
+            to_units=pyunits.mg / pyunits.L,
+        )
+    )
+    p_in = value(
+        pyunits.convert(
+            cv.properties_in[0].pressure,
+            to_units=pyunits.psi,
+        )
+    )
+    print(f'{"INLET Flow":<{w}s}{f"{flow_in:<{w},.1f}"}{"gpm":<{w}s}')
+    print(f'{"INLET NaCl":<{w}s}{f"{conc_in:<{w},.1f}"}{"mg/L":<{w}s}')
+    print(f'{"INLET Pressure":<{w}s}{f"{p_in:<{w},.1f}"}{"psi":<{w}s}')
+
+    flow_out = value(
+        pyunits.convert(
+            cv.properties_out[0].flow_vol_phase["Liq"],
+            to_units=pyunits.gallons / pyunits.minute,
+        )
+    )
+    conc_out = value(
+        pyunits.convert(
+            cv.properties_out[0].conc_mass_phase_comp["Liq", "NaCl"],
+            to_units=pyunits.mg / pyunits.L,
+        )
+    )
+    p_out = value(
+        pyunits.convert(
+            cv.properties_out[0].pressure,
+            to_units=pyunits.psi,
+        )
+    )
+    print(f'{"OUTLET Flow":<{w}s}{f"{flow_out:<{w},.1f}"}{"gpm":<{w}s}')
+    print(f'{"OUTLET NaCl":<{w}s}{f"{conc_out:<{w},.1f}"}{"mg/L":<{w}s}')
+    print(f'{"OUTLET Pressure":<{w}s}{f"{p_out:<{w},.1f}"}{"psi":<{w}s}')
 
 
 def report_sj(sj, w=25):
@@ -62,11 +123,16 @@ def report_mixer(mixer, w=25):
                 to_units=pyunits.gallons / pyunits.minute,
             )
         )
-        tot_flow_in += flow_in
         conc_in = value(
             pyunits.convert(
                 sb[0].conc_mass_phase_comp["Liq", "NaCl"],
                 to_units=pyunits.mg / pyunits.L,
+            )
+        )
+        p_in = value(
+            pyunits.convert(
+                sb[0].pressure,
+                to_units=pyunits.psi,
             )
         )
         print(
@@ -74,6 +140,9 @@ def report_mixer(mixer, w=25):
         )
         print(
             f'{"   NaCl " + x.replace("_", " ").title():<{w}s}{f"{conc_in:<{w},.1f}"}{"mg/L":<{w}s}'
+        )
+        print(
+            f'{"   Pressure " + x.replace("_", " ").title():<{w}s}{f"{p_in:<{w},.1f}"}{"psi":<{w}s}'
         )
     flow_out = value(
         pyunits.convert(
@@ -87,8 +156,15 @@ def report_mixer(mixer, w=25):
             to_units=pyunits.mg / pyunits.L,
         )
     )
+    p_out = value(
+        pyunits.convert(
+            ms[0].pressure,
+            to_units=pyunits.psi,
+        )
+    )
     print(f'{"Outlet Flow":<{w}s}{f"{flow_out:<{w},.1f}"}{"gpm":<{w}s}')
     print(f'{"Outlet NaCl":<{w}s}{f"{conc_out:<{w},.1f}"}{"mg/L":<{w}s}')
+    print(f'{"Outlet Pressure":<{w}s}{f"{p_out:<{w},.1f}"}{"psi":<{w}s}')
 
 
 def report_separator(sep, w=25):
