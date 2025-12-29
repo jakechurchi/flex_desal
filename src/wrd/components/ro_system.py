@@ -258,7 +258,7 @@ def report_ro_system(m, w=30, add_costing=True):
         # print(f"\n{header}\n")
         report_ro_train(m.fs.train[i], train_num=i, w=w, add_costing=add_costing)
 
-    title = f"Overall System Performance"
+    title = f"Overall RO System Performance"
     side = int(((3 * w) - len(title)) / 2) - 1
     header = "_" * side + f" {title} " + "_" * side
     print(f"\n\n{header}\n")

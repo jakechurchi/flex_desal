@@ -1,4 +1,3 @@
-from os import path
 from pyomo.environ import (
     ConcreteModel,
     value,
@@ -12,12 +11,11 @@ from idaes.core.util.initialization import propagate_state
 from idaes.core.util.model_statistics import degrees_of_freedom
 from idaes.core import FlowsheetBlock
 from idaes.models.unit_models import Product, Feed
+
 from watertap.property_models.NaCl_T_dep_prop_pack import NaClParameterBlock
 from watertap.costing import WaterTAPCosting
 
 from wrd.components.chemical_addition import *
-from wrd.components.ro_system import *
-
 from wrd.components.decarbonator import *
 from wrd.components.uv_aop import *
 from wrd.components.pump import *
@@ -84,8 +82,8 @@ def build_wrd_system(
 
     # TSRO System
     m.fs.tsro_trains = Set(initialize=range(1, num_tsro_trains + 1))
-    m.fs.tsro_header = StateJunction(property_package=m.fs.properties)
-    # m.fs.tsro_header = HeadLoss(property_package=m.fs.properties)
+    # m.fs.tsro_header = StateJunction(property_package=m.fs.properties)
+    m.fs.tsro_header = HeadLoss(property_package=m.fs.properties)
     touch_flow_and_conc(m.fs.tsro_header)
     m.fs.tsro_feed_separator = Separator(
         property_package=m.fs.properties,
@@ -349,7 +347,7 @@ def set_wrd_operating_conditions(m):
 
     set_decarbonator_op_conditions(m.fs.decarbonator)
 
-    # m.fs.tsro_header.control_volume.deltaP[0].fix(-40* pyunits.psi)
+    m.fs.tsro_header.control_volume.deltaP[0].fix(-40 * pyunits.psi)
     m.fs.ro_system_product_mixer.outlet.pressure[0].fix(101325)
     m.fs.tsro_brine_mixer.outlet.pressure[0].fix(101325)
     m.fs.disposal_mixer.outlet.pressure[0].fix(101325)
@@ -519,19 +517,23 @@ def report_wrd(m, w=30):
     title = f"WRD System Report"
     side = int(((3 * w) - len(title)) / 2) - 1
     header = "/" * side + f" {title} " + "\\" * side
+    sep = "\n" + "@" * (3 * w) + "\n"
     print(f"\n\n{header}\n")
-    print(f'{"Parameter":<{w}s}{"Value":<{w}s}{"Units":<{w}s}')
-    print(f"{'-' * (3 * w)}")
 
     for i, chem_name in enumerate(m.fs.pre_treat_chem_list):
         unit = m.fs.find_component(chem_name + "_addition")
         report_chem_addition(unit, w=w)
 
+    print(sep)
     report_uf_system(m, w=w)
+    print(sep)
     report_ro_system(m, w=w)
+    print(sep)
 
     report_mixer(m.fs.ro_brine_mixer, w=w)
-    report_sj(m.fs.tsro_header, w=w)
+    print(sep)
+    report_head_loss(m.fs.tsro_header, w=w)
+    print(sep)
 
     for t in m.fs.tsro_trains:
         title = f"TSRO Stage Report - Train {t}"
@@ -540,16 +542,23 @@ def report_wrd(m, w=30):
         print(f"\n{header}\n")
         report_ro_stage(m.fs.tsro_train[t], w=w)
 
-    report_mixer(m.fs.tsro_brine_mixer, w=w)
-    report_mixer(m.fs.uf_disposal_mixer, w=w)
-    report_mixer(m.fs.ro_system_product_mixer, w=w)
-    report_mixer(m.fs.disposal_mixer, w=w)
+    print(sep)
     report_uv(m.fs.UV_aop, w=w)
+    print(sep)
     report_decarbonator(m.fs.decarbonator, w=w)
+    print(sep)
 
-    for i, chem_name in enumerate(m.fs.post_treat_chem_list):
+    for chem_name in m.fs.post_treat_chem_list:
         unit = m.fs.find_component(chem_name + "_addition")
         report_chem_addition(unit, w=w)
+
+    print(sep)
+    report_mixer(m.fs.tsro_brine_mixer, w=w)
+    report_mixer(m.fs.uf_disposal_mixer, w=w)
+    print(sep)
+    report_mixer(m.fs.ro_system_product_mixer, w=w)
+    report_mixer(m.fs.disposal_mixer, w=w)
+    print(sep)
 
     title = f"WRD System Summary"
     side = int(((3 * w) - len(title)) / 2) - 1
@@ -573,12 +582,13 @@ def report_wrd(m, w=30):
     print(
         f'{f"Total Pumping Power":<{w}s}{value(pyunits.convert(m.fs.total_system_pump_power, to_units=pyunits.kW)):<{w}.3f}{"kW"}'
     )
-    print(
-        f'{f"Levelized Cost of Water":<{w}s}{value(pyunits.convert(m.fs.costing.LCOW, to_units=pyunits.USD_2021  / pyunits.m**3)):<{w}.3f}{"$/m3"}'
-    )
-    print(
-        f'{f"Electricity Cost":<{w}s}{value(pyunits.convert(m.fs.costing.aggregate_flow_costs["electricity"], to_units=pyunits.USD_2021 / pyunits.year)):<{w}.3f}{"$/yr"}'
-    )
+    if m.fs.find_component("costing") is not None:
+        print(
+            f'{f"Levelized Cost of Water":<{w}s}{value(pyunits.convert(m.fs.costing.LCOW, to_units=pyunits.USD_2021  / pyunits.m**3)):<{w}.3f}{"$/m3"}'
+        )
+        print(
+            f'{f"Electricity Cost":<{w}s}{value(pyunits.convert(m.fs.costing.aggregate_flow_costs["electricity"], to_units=pyunits.USD_2021 / pyunits.year)):<{w}.3f}{"$/yr"}'
+        )
 
 
 def main(num_pro_trains=1, num_tsro_trains=None, num_pro_stages=2):
@@ -597,19 +607,17 @@ def main(num_pro_trains=1, num_tsro_trains=None, num_pro_stages=2):
     print(f"{degrees_of_freedom(m)} degrees of freedom after setting op conditions")
     assert degrees_of_freedom(m) == 0
     initialize_wrd_system(m)
+
     add_wrd_system_costing(m)
 
     solver = get_solver()
-    try:
-        results = solver.solve(m)
-        assert_optimal_termination(results)
-    except:
-        print_infeasible_constraints(m)
-        print("\n--------- Failed to Solve ---------\n")
+    results = solver.solve(m)
+    assert_optimal_termination(results)
+    report_wrd(m)
+
     return m
 
 
 if __name__ == "__main__":
     num_pro_stages = 2
     m = main(num_pro_stages=num_pro_stages)
-    report_wrd(m)

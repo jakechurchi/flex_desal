@@ -104,8 +104,8 @@ class ChemicalAdditionData(StateJunctionData):
         ConfigValue(
             domain=dict,
             default={},
-            description="Type of chemical addition",
-            doc="""Indicates the type of chemical addition to be modeled,
+            description="Chemical addition data",
+            doc="""Dictionary containing chemical addition dose and solution properties,
     **default** = None.""",
         ),
     )
