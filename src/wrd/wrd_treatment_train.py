@@ -346,8 +346,9 @@ def set_wrd_operating_conditions(m):
     set_uv_aop_op_conditions(m.fs.UV_aop)
 
     set_decarbonator_op_conditions(m.fs.decarbonator)
-
-    m.fs.tsro_header.control_volume.deltaP[0].fix(-40 * pyunits.psi)
+    m.fs.tsro_header.TSRO_header_loss = get_config_value(
+        m.fs.config_data, "header_loss", "reverse_osmosis_1d","stage_3")
+    m.fs.tsro_header.control_volume.deltaP[0].fix(m.fs.tsro_header.TSRO_header_loss)
     m.fs.ro_system_product_mixer.outlet.pressure[0].fix(101325)
     m.fs.tsro_brine_mixer.outlet.pressure[0].fix(101325)
     m.fs.disposal_mixer.outlet.pressure[0].fix(101325)

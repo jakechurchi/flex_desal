@@ -122,8 +122,8 @@ reverse_osmosis_1d:
     pressure_drop: 
       value: -9.8
       units: psi
-    add_head_loss:
-      value: -50 #-59.3 --> high drop causes solver issues
+    header_loss:
+      value: -59.3
       units: psi      
 uf_pumps:
   number_trains: 1 # This number is distinct from the number of RO trains, but they should match for testing
