@@ -57,9 +57,8 @@ def test_ro_train_main_no_costing():
     assert not hasattr(m.fs, "costing")
 
 
-# @pytest.mark.component
-# def test_TSRO():
-# 8_19 power, 29.3
-# 8_19 flowrate, 198
-# 3_13 power, 24.9
-# 3_13 flowrate, 279
+# TSRO power and flowrate data for reference:
+# 8_19 power, 29.3 kW
+# 8_19 flowrate, 198 gpm
+# 3_13 power, 24.9 kW
+# 3_13 flowrate, 279 gpm
