@@ -29,9 +29,10 @@ from srp.utils import touch_flow_and_conc
 from models import HeadLoss
 
 
-def build_wrd_system(
-    num_pro_trains=4, num_tsro_trains=None, num_stages=2, file="wrd_inputs_8_19_21.yaml"
-):
+def build_wrd_system(num_pro_trains=4, num_tsro_trains=None, num_stages=2, file=None):
+
+    if file is None:
+        raise ValueError("Input file must be provided to build WRD system.")
 
     if num_tsro_trains is None:
         num_tsro_trains = num_pro_trains
@@ -284,15 +285,11 @@ def add_wrd_connections(m):
     m.fs.disposal_mixer_to_disposal = Arc(
         source=m.fs.disposal_mixer.outlet, destination=m.fs.disposal.inlet
     )
-    ##### Is this TSRO Bypass?
-    # m.fs.ro_to_disposal = Arc(
-    #     source=m.fs.tsro_header.outlet, destination=m.fs.disposal.inlet
-    # )
 
     TransformationFactory("network.expand_arcs").apply_to(m)
 
 
-def set_wrd_inlet_conditions(m, Qin=None, Cin=None, file="wrd_inputs_8_19_21.yaml"):
+def set_wrd_inlet_conditions(m, Qin=None, Cin=None, Tin=None):
     # IMO it makes sense Qin to be from the yaml for the wrd flowsheet so all case study inputs are in one place.
     # Other component files Q and C can be hard coded for testing.
     if Qin is None:
@@ -308,12 +305,18 @@ def set_wrd_inlet_conditions(m, Qin=None, Cin=None, file="wrd_inputs_8_19_21.yam
         )
     else:
         Cin = Cin * pyunits.g / pyunits.L
+
+    if Tin is None:
+        Tin = get_config_value(m.fs.config_data, "feed_temperature", "feed_stream")
+    else:
+        Tin = Tin * pyunits.K
+
     m.fs.feed.properties.calculate_state(
         var_args={
             ("flow_vol_phase", ("Liq")): (Qin * m.num_pro_trains),
             ("conc_mass_phase_comp", ("Liq", "NaCl")): Cin,
+            ("temperature", None): Tin,
             ("pressure", None): 101325,
-            ("temperature", None): 273.15 + 27,
         },
         hold_state=True,
     )
@@ -457,10 +460,10 @@ def initialize_wrd_system(m):
 
 def add_wrd_system_costing(m):
     # uf and UV don't have same convention for costing
-    add_uf_system_costing(m)
-    add_ro_system_costing(m)
-    cost_uv_aop(m.fs.UV_aop)
-    cost_decarbonator(m.fs.decarbonator)
+    add_uf_system_costing(m, costing_package=m.fs.costing)
+    add_ro_system_costing(m, costing_package=m.fs.costing)
+    cost_uv_aop(m.fs.UV_aop, costing_package=m.fs.costing)
+    cost_decarbonator(m.fs.decarbonator, costing_package=m.fs.costing)
     for chem_name in m.fs.chemical_list:
         add_chem_addition_costing(
             blk=m.fs.find_component(chem_name + "_addition"),
@@ -599,10 +602,10 @@ def report_wrd(m, w=30):
 
 
 def main(
-    num_pro_trains=1,
+    num_pro_trains=4,
     num_tsro_trains=None,
     num_pro_stages=2,
-    file="wrd_inputs_8_19_21.yaml",
+    file=None,
 ):
 
     m = build_wrd_system(
@@ -632,6 +635,6 @@ def main(
 
 
 if __name__ == "__main__":
-    num_pro_stages = 2
+    num_pro_trains = 4
     file = "wrd_inputs_3_13_21.yaml"
-    m = main(num_pro_stages=num_pro_stages, file=file)
+    m = main(num_pro_trains=num_pro_trains, file=file)
