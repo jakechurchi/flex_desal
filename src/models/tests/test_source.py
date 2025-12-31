@@ -58,7 +58,7 @@ def build_source():
     return m
 
 
-@pytest.mark.unit
+@pytest.mark.component
 def test_head_loss():
     m = build_source()
 
