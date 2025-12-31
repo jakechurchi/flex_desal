@@ -9,13 +9,12 @@ from pyomo.environ import (
 
 from idaes.core.util.initialization import propagate_state
 from idaes.core.util.model_statistics import degrees_of_freedom
-from idaes.core import FlowsheetBlock
+from idaes.core import FlowsheetBlock, UnitModelCostingBlock
 from idaes.models.unit_models import Product, Feed
 
 from watertap.property_models.NaCl_T_dep_prop_pack import NaClParameterBlock
 from watertap.costing import WaterTAPCosting
 
-from wrd.components.chemical_addition import *
 from wrd.components.decarbonator import *
 from wrd.components.uv_aop import *
 from wrd.components.pump import *
@@ -24,14 +23,16 @@ from wrd.components.ro_system import *
 from wrd.components.ro_stage import *
 from wrd.components.ro import report_ro
 from wrd.components.chemical_addition import *
+from wrd.components.brine_disposal import *
 from wrd.utilities import *
 from srp.utils import touch_flow_and_conc
-from models import HeadLoss
+from models import HeadLoss, Source
 
 
-def build_wrd_system(
-    num_pro_trains=4, num_tsro_trains=None, num_stages=2, file="wrd_inputs_8_19_21.yaml"
-):
+def build_wrd_system(num_pro_trains=4, num_tsro_trains=None, num_stages=2, file=None):
+
+    if file is None:
+        raise ValueError("Input file must be provided to build WRD system.")
 
     if num_tsro_trains is None:
         num_tsro_trains = num_pro_trains
@@ -50,10 +51,16 @@ def build_wrd_system(
 
     m.fs.properties = NaClParameterBlock()
     m.fs.costing = WaterTAPCosting()
+
+    # configure costing parameters
     m.fs.costing.base_currency = pyunits.USD_2021
+    m.fs.costing.base_period = pyunits.year
+    m.fs.costing.utilization_factor.fix(1)
+    m.fs.costing.maintenance_labor_chemical_factor.fix(0)
+    m.fs.costing.electricity_cost.fix(0.15)
 
     # Add units
-    m.fs.feed = Feed(property_package=m.fs.properties)
+    m.fs.feed = Source(property_package=m.fs.properties)
     touch_flow_and_conc(m.fs.feed)
 
     # Pre- UF Treatment chemical addition units (read from metadata)
@@ -70,7 +77,9 @@ def build_wrd_system(
         )
 
     # UF
-    build_uf_system(m=m, num_trains=num_pro_trains, prop_package=m.fs.properties)
+    build_uf_system(
+        m=m, num_trains=num_pro_trains, prop_package=m.fs.properties, file=file
+    )
 
     # PRO System
     build_ro_system(
@@ -78,6 +87,7 @@ def build_wrd_system(
         num_trains=num_pro_trains,
         num_stages=num_stages,
         prop_package=m.fs.properties,
+        file=file,
     )
 
     # TSRO System
@@ -95,7 +105,9 @@ def build_wrd_system(
     m.fs.tsro_train = FlowsheetBlock(m.fs.tsro_trains, dynamic=False)
 
     for t in m.fs.tsro_trains:
-        build_ro_stage(m.fs.tsro_train[t], stage_num=3, prop_package=m.fs.properties)
+        build_ro_stage(
+            m.fs.tsro_train[t], stage_num=3, prop_package=m.fs.properties, file=file
+        )
 
     ro_system_prod_mixer_inlet_list = ["from_pro_product"] + [
         f"tsro{t}_to_ro_product" for t in m.fs.tsro_trains
@@ -129,7 +141,7 @@ def build_wrd_system(
     m.fs.decarbonator = FlowsheetBlock(dynamic=False)
     build_decarbonator(m.fs.decarbonator, prop_package=m.fs.properties)
 
-    # Post-Treatment chemical addition units - ZO Models
+    # Post-Treatment chemical addition units
     m.fs.post_treat_chem_list = [
         "calcium_hydroxide",
         "sodium_hydroxide",
@@ -154,8 +166,10 @@ def build_wrd_system(
 
     m.fs.product = Product(property_package=m.fs.properties)
     touch_flow_and_conc(m.fs.product)
-    m.fs.disposal = Product(property_package=m.fs.properties)
-    touch_flow_and_conc(m.fs.disposal)
+
+    # Brine disposal
+    m.fs.disposal = FlowsheetBlock(dynamic=False)
+    build_brine_disposal(m.fs.disposal, prop_package=m.fs.properties, file=file)
 
     # Overall System Metrics
     m.fs.system_recovery = Expression(
@@ -277,17 +291,13 @@ def add_wrd_connections(m):
         source=last_chem.product.outlet, destination=m.fs.product.inlet
     )
     m.fs.disposal_mixer_to_disposal = Arc(
-        source=m.fs.disposal_mixer.outlet, destination=m.fs.disposal.inlet
+        source=m.fs.disposal_mixer.outlet, destination=m.fs.disposal.feed.inlet
     )
-    ##### Is this TSRO Bypass?
-    # m.fs.ro_to_disposal = Arc(
-    #     source=m.fs.tsro_header.outlet, destination=m.fs.disposal.inlet
-    # )
 
     TransformationFactory("network.expand_arcs").apply_to(m)
 
 
-def set_wrd_inlet_conditions(m, Qin=None, Cin=None, file="wrd_inputs_8_19_21.yaml"):
+def set_wrd_inlet_conditions(m, Qin=None, Cin=None, Tin=None):
     # IMO it makes sense Qin to be from the yaml for the wrd flowsheet so all case study inputs are in one place.
     # Other component files Q and C can be hard coded for testing.
     if Qin is None:
@@ -303,12 +313,18 @@ def set_wrd_inlet_conditions(m, Qin=None, Cin=None, file="wrd_inputs_8_19_21.yam
         )
     else:
         Cin = Cin * pyunits.g / pyunits.L
+
+    if Tin is None:
+        Tin = get_config_value(m.fs.config_data, "feed_temperature", "feed_stream")
+    else:
+        Tin = Tin * pyunits.K
+
     m.fs.feed.properties.calculate_state(
         var_args={
             ("flow_vol_phase", ("Liq")): (Qin * m.num_pro_trains),
             ("conc_mass_phase_comp", ("Liq", "NaCl")): Cin,
+            ("temperature", None): Tin,
             ("pressure", None): 101325,
-            ("temperature", None): 273.15 + 27,
         },
         hold_state=True,
     )
@@ -346,8 +362,10 @@ def set_wrd_operating_conditions(m):
     set_uv_aop_op_conditions(m.fs.UV_aop)
 
     set_decarbonator_op_conditions(m.fs.decarbonator)
-
-    m.fs.tsro_header.control_volume.deltaP[0].fix(-40 * pyunits.psi)
+    m.fs.tsro_header.TSRO_header_loss = get_config_value(
+        m.fs.config_data, "header_loss", "reverse_osmosis_1d", "stage_3"
+    )
+    m.fs.tsro_header.control_volume.deltaP[0].fix(m.fs.tsro_header.TSRO_header_loss)
     m.fs.ro_system_product_mixer.outlet.pressure[0].fix(101325)
     m.fs.tsro_brine_mixer.outlet.pressure[0].fix(101325)
     m.fs.disposal_mixer.outlet.pressure[0].fix(101325)
@@ -399,7 +417,7 @@ def initialize_wrd_system(m):
     initialize_ro_system(m)
 
     propagate_state(m.fs.pro_to_ro_system_product_mixer)
-    #
+
     propagate_state(m.fs.pro_to_tsro_header)
 
     m.fs.tsro_header.initialize()
@@ -445,15 +463,19 @@ def initialize_wrd_system(m):
     m.fs.disposal_mixer.initialize()
     propagate_state(m.fs.disposal_mixer_to_disposal)
 
-    m.fs.disposal.initialize()
+    initialize_brine_disposal(m.fs.disposal)
 
 
-def add_wrd_system_costing(m):
-    # uf and UV don't have same convention for costing
-    add_uf_system_costing(m)
-    add_ro_system_costing(m)
-    cost_uv_aop(m.fs.UV_aop)
-    cost_decarbonator(m.fs.decarbonator)
+def add_wrd_system_costing(m, source_cost=0.15):
+
+    m.fs.feed.costing = UnitModelCostingBlock(flowsheet_costing_block=m.fs.costing)
+    m.fs.costing.source.unit_cost.fix(source_cost)
+
+    add_uf_system_costing(m, costing_package=m.fs.costing)
+    add_ro_system_costing(m, costing_package=m.fs.costing)
+    cost_uv_aop(m.fs.UV_aop, costing_package=m.fs.costing)
+    add_brine_disposal_costing(m.fs.disposal, costing_package=m.fs.costing)
+    cost_decarbonator(m.fs.decarbonator, costing_package=m.fs.costing)
     for chem_name in m.fs.chemical_list:
         add_chem_addition_costing(
             blk=m.fs.find_component(chem_name + "_addition"),
@@ -503,14 +525,14 @@ def report_wrd(m, w=30):
     )
 
     brine_flow = pyunits.convert(
-        m.fs.disposal.properties[0].flow_vol_phase["Liq"],
+        m.fs.disposal.feed.properties[0].flow_vol_phase["Liq"],
         to_units=pyunits.gallon / pyunits.minute,
     )
     brine_flow_mgd = pyunits.convert(
         brine_flow, to_units=pyunits.Mgallons / pyunits.day
     )
     brine_conc = pyunits.convert(
-        m.fs.disposal.properties[0].conc_mass_phase_comp["Liq", "NaCl"],
+        m.fs.disposal.feed.properties[0].conc_mass_phase_comp["Liq", "NaCl"],
         to_units=pyunits.mg / pyunits.L,
     )
 
@@ -559,6 +581,8 @@ def report_wrd(m, w=30):
     report_mixer(m.fs.ro_system_product_mixer, w=w)
     report_mixer(m.fs.disposal_mixer, w=w)
     print(sep)
+    report_brine_disposal(m.fs.disposal, w=w)
+    print(sep)
 
     title = f"WRD System Summary"
     side = int(((3 * w) - len(title)) / 2) - 1
@@ -591,12 +615,18 @@ def report_wrd(m, w=30):
         )
 
 
-def main(num_pro_trains=1, num_tsro_trains=None, num_pro_stages=2):
+def main(
+    num_pro_trains=4,
+    num_tsro_trains=None,
+    num_pro_stages=2,
+    file=None,
+):
 
     m = build_wrd_system(
         num_pro_trains=num_pro_trains,
         num_tsro_trains=num_tsro_trains,
         num_stages=num_pro_stages,
+        file=file,
     )
     add_wrd_connections(m)
     set_wrd_system_scaling(m)
@@ -619,5 +649,6 @@ def main(num_pro_trains=1, num_tsro_trains=None, num_pro_stages=2):
 
 
 if __name__ == "__main__":
-    num_pro_stages = 2
-    m = main(num_pro_stages=num_pro_stages)
+    num_pro_trains = 1
+    file = "wrd_inputs_3_13_21.yaml"
+    m = main(num_pro_trains=num_pro_trains, file=file)
