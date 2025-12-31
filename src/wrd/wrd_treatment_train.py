@@ -591,7 +591,12 @@ def report_wrd(m, w=30):
         )
 
 
-def main(num_pro_trains=1, num_tsro_trains=None, num_pro_stages=2,file="wrd_inputs_8_19_21.yaml"):
+def main(
+    num_pro_trains=1,
+    num_tsro_trains=None,
+    num_pro_stages=2,
+    file="wrd_inputs_8_19_21.yaml",
+):
 
     m = build_wrd_system(
         num_pro_trains=num_pro_trains,
@@ -621,5 +626,5 @@ def main(num_pro_trains=1, num_tsro_trains=None, num_pro_stages=2,file="wrd_inpu
 
 if __name__ == "__main__":
     num_pro_stages = 2
-    m = main(num_pro_stages=num_pro_stages,file="wrd_inputs_3_13_21.yaml")
+    m = main(num_pro_stages=num_pro_stages, file="wrd_inputs_3_13_21.yaml")
     report_wrd(m)

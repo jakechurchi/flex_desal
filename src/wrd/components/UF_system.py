@@ -86,11 +86,12 @@ def build_uf_system(
 
     if split_fraction is None:
         # Even Split
-        m.fs.uf_feed_separator.split_frac_input = 1.0 / len(outlet_list) * ones(len(outlet_list))
+        m.fs.uf_feed_separator.split_frac_input = (
+            1.0 / len(outlet_list) * ones(len(outlet_list))
+        )
     else:
         m.fs.uf_feed_separator.split_frac_input = split_fraction
 
-        
     perm_inlet_list = [f"uf_prod_inlet{i}" for i in m.fs.uf_trains]
 
     m.fs.uf_product_mixer = Mixer(
@@ -180,9 +181,7 @@ def set_inlet_conditions(m, Qin=2637, Cin=0.5):
 
     m.fs.feed.properties.calculate_state(
         var_args={
-            ("flow_vol_phase", ("Liq")): Qin
-            * pyunits.gallons
-            / pyunits.minute,
+            ("flow_vol_phase", ("Liq")): Qin * pyunits.gallons / pyunits.minute,
             ("conc_mass_phase_comp", ("Liq", "NaCl")): Cin * pyunits.g / pyunits.L,
             ("pressure", None): 101325,
             ("temperature", None): 273.15 + 27,
@@ -302,7 +301,7 @@ def report_uf_system_pumps(m, w=30):
         report_pump(pump, w=w)
 
 
-def main(add_costing=False,num_trains=4,split_fraction=None,Qin=2637, Cin=0.5):
+def main(add_costing=False, num_trains=4, split_fraction=None, Qin=2637, Cin=0.5):
 
     m = build_uf_system(num_trains=num_trains, split_fraction=split_fraction)
     set_uf_system_scaling(m)

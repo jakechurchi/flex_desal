@@ -8,8 +8,10 @@ from wrd.components.UF_train import main
 def test_uf_train_with_costing():
     m = main(add_costing=True)
 
+
 # Add tests for the full power UF pumps, half power UF pumps, and total flowrate divided by four.
 # Still waiting for data here
+
 
 @pytest.mark.skip
 def test_uf_train_8_19_21():
@@ -28,6 +30,7 @@ def test_uf_train_8_19_21():
     assert_units_consistent(power + expected_power)
     assert pytest.approx(value(power), rel=0.15) == value(expected_power)  # kWh/m3
 
+
 @pytest.mark.component
 def test_uf_train_3_13_21_one_train():
     m = main(
@@ -41,9 +44,10 @@ def test_uf_train_3_13_21_one_train():
     power = pyunits.convert(
         m.fs.uf_train.pump.unit.work_mechanical[0], to_units=pyunits.kW
     )
-    expected_power = 108 * pyunits.kW 
+    expected_power = 108 * pyunits.kW
     assert_units_consistent(power + expected_power)
-    assert pytest.approx(value(power), rel=0.15) == value(expected_power) 
+    assert pytest.approx(value(power), rel=0.15) == value(expected_power)
+
 
 @pytest.mark.component
 def test_uf_train_3_13_21_full():
@@ -58,9 +62,10 @@ def test_uf_train_3_13_21_full():
     power = pyunits.convert(
         m.fs.uf_train.pump.unit.work_mechanical[0], to_units=pyunits.kW
     )
-    expected_power = 175 * pyunits.kW 
+    expected_power = 175 * pyunits.kW
     assert_units_consistent(power + expected_power)
-    assert pytest.approx(value(power), rel=0.15) == value(expected_power) 
+    assert pytest.approx(value(power), rel=0.15) == value(expected_power)
+
 
 @pytest.mark.component
 def test_uf_train_3_13_21_half():
@@ -75,6 +80,6 @@ def test_uf_train_3_13_21_half():
     power = pyunits.convert(
         m.fs.uf_train.pump.unit.work_mechanical[0], to_units=pyunits.kW
     )
-    expected_power = 79 * pyunits.kW 
+    expected_power = 79 * pyunits.kW
     assert_units_consistent(power + expected_power)
-    assert pytest.approx(value(power), rel=0.15) == value(expected_power) 
+    assert pytest.approx(value(power), rel=0.15) == value(expected_power)
