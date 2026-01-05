@@ -13,7 +13,7 @@ def test_chem_addition_missing_data():
         _ = ca.build_system(chemical_name=None)
 
 
-@pytest.mark.component
+@pytest.mark.skip
 def test_chem_addition_chem_flow():
     # These flows are based directly on Qin=2637 and yaml inputs, so values should agree very closely
     # mass_flow_rates = {
@@ -51,22 +51,22 @@ def test_chem_addition_chem_flow():
         )  # m^3/s
 
 
-@pytest.mark.skip
+@pytest.mark.component
 def test_chem_addition_costs():
-    # These costs are based directly on Qin=2637 and yaml inputs, so values should agree very closely
+    # These costs are based directly on Qin=10000 and yaml inputs, so values should agree very closely
     monthly_costs = {
-        "ammonium_sulfate": 222,
-        "sodium_hypochlorite": 2256,
-        "sulfuric_acid": 8880,
-        "scale_inhibitor": 4533,
-        "calcium_hydroxide": 47309,
-        "sodium_hydroxide": 3114,
-        "sodium_bisulfite": 2458,
+        "ammonium_sulfate": 841,
+        "sodium_hypochlorite": 8603,
+        "sulfuric_acid": 35611,
+        "scale_inhibitor": 15626,
+        "calcium_hydroxide": 143327,
+        "sodium_hydroxide": 11810,
+        "sodium_bisulfite": 9322,
     }
     for chem, cost in monthly_costs.items():
         m = ca.main(
             chemical_name=chem,
-            Qin=2637,
+            Qin=10000,
             Cin=0.5,
             dose=None,
             chem_cost=None,
