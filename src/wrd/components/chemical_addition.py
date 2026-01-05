@@ -242,7 +242,12 @@ def report_chem_addition(blk, w=35):
     print(
         f'{f"{chem_name} Pump":<{w}s}{value(blk.unit.pumping_power):<{w}.3e}{f"{pyunits.get_units(blk.unit.pumping_power)}"}'
     )
-
+    print(
+        f'{f"{chem_name} Vol. Flow (gpm)":<{w}s}{value(pyunits.convert(blk.unit.chemical_soln_flow_vol,to_units=pyunits.gallon/pyunits.min)):<{w}.3e}{"gpm"}'
+    )
+    print(
+        f'{f"{chem_name} Vol. Flow (gal/month)":<{w}s}{value(pyunits.convert(blk.unit.chemical_soln_flow_vol,to_units=pyunits.gallon/pyunits.month)):<{w}.3e}{"gal/month"}'
+    )
     m = blk.model()
     if m.fs.find_component("costing") is not None:
         cost_var = m.fs.costing.find_component(f"{blk.unit.config.chemical}")
@@ -282,5 +287,5 @@ def main(
 
 
 if __name__ == "__main__":
-    chem = "sodium_hydroxide"
-    m = main(chemical_name=chem)
+    chem = "ammonium_sulfate"
+    m = main(chemical_name=chem,Qin=10800)
