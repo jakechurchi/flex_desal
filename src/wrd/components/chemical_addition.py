@@ -282,5 +282,5 @@ def main(
 
 
 if __name__ == "__main__":
-    chem = "scale_inhibitor"
+    chem = "ammonium_sulfate"
     m = main(chemical_name=chem)
