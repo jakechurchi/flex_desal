@@ -54,7 +54,7 @@ def test_wrd_treatment_train_8_19_21(num_pro_trains):
             # Expected deviations due to daily variations in chemical use
             # i.e., comparing a modeled daily cost to an actual monthly cost
             assert pytest.approx(value(agg_cost), rel=0.17) == value(agg_cost_dict[k])
-        
+
         expected_LCOW = 0.537 * pyunits.USD_2021 / pyunits.m**3
         assert pytest.approx(value(m.fs.costing.LCOW), rel=0.15) == value(expected_LCOW)
     # TODO: Add more tests against facility data
