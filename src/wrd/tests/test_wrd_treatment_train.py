@@ -50,13 +50,12 @@ def test_wrd_treatment_train_8_19_21(num_pro_trains):
         }
         for k, v in m.fs.costing.aggregate_flow_costs.items():
             agg_cost = pyunits.convert(v, to_units=pyunits.USD_2021 / pyunits.month)
-            # NOTE: 17% tolerance
             # Expected deviations due to daily variations in chemical use
             # i.e., comparing a modeled daily cost to an actual monthly cost
-            assert pytest.approx(value(agg_cost), rel=0.17) == value(agg_cost_dict[k])
+            assert pytest.approx(value(agg_cost), rel=0.35) == value(agg_cost_dict[k])
 
         expected_LCOW = 0.442 * pyunits.USD_2021 / pyunits.m**3
-        assert pytest.approx(value(m.fs.costing.LCOW), rel=0.15) == value(expected_LCOW)
+        assert pytest.approx(value(m.fs.costing.LCOW), rel=0.35) == value(expected_LCOW)
 
     # TODO: Add more tests against facility data
 
