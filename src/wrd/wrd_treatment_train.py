@@ -57,7 +57,7 @@ def build_wrd_system(num_pro_trains=4, num_tsro_trains=None, num_stages=2, file=
     m.fs.costing.base_period = pyunits.month
     m.fs.costing.utilization_factor.fix(1)
     m.fs.costing.maintenance_labor_chemical_factor.fix(0)
-    m.fs.costing.electricity_cost.fix(0.15) # Read from yaml / config file
+    m.fs.costing.electricity_cost.fix(0.15)  # Read from yaml / config file
 
     # Add units
     m.fs.feed = Source(property_package=m.fs.properties)
@@ -709,12 +709,13 @@ def report_wrd(m, w=30, add_comp_metrics=False):
     if add_comp_metrics:
         report_wrd_comparison_metrics(m, w=w)
 
+
 def report_wrd_costing_flows(m, w=30):
     title = "Costing Flows"
     side = int(((3 * w) - len(title)) / 2) - 1
     header = "-" * side + f" {title} " + "-" * side
     print(f"\n{header}\n")
-    
+
     for x in m.fs.costing.component_objects([Var, Expression], descend_into=False):
         # x.display()
         if "aggregate_flow_" in x.name and not x.is_indexed():
@@ -722,12 +723,17 @@ def report_wrd_costing_flows(m, w=30):
                 continue
             try:
                 # Try converting to ton/month (for mass flows)
-                converted_value = value(pyunits.convert(x, to_units=pyunits.ton / pyunits.month))
+                converted_value = value(
+                    pyunits.convert(x, to_units=pyunits.ton / pyunits.month)
+                )
                 print(f'{x.name:<{w}s}{converted_value:<{w}.3f}{"ton/month"}')
             except:
                 # Fall back to gallon/month (for volumetric flows)
-                converted_value = value(pyunits.convert(x, to_units=pyunits.gallon / pyunits.month))
+                converted_value = value(
+                    pyunits.convert(x, to_units=pyunits.gallon / pyunits.month)
+                )
                 print(f'{x.name:<{w}s}{converted_value:<{w}.3f}{"gal/month"}')
+
 
 def main(
     num_pro_trains=4,
@@ -767,7 +773,6 @@ if __name__ == "__main__":
     file = "wrd_inputs_8_19_21.yaml"
     m = main(num_pro_trains=num_pro_trains, file=file)
     # m.fs.costing.display()
-
 
     # from models.chemical_addition import ChemicalAdditionData
     # from pyomo.environ import Block, Var, Expression
@@ -855,9 +860,9 @@ if __name__ == "__main__":
     #         print(
     #             f"\t{'Unit Cost ($/gal):':<30} {value(uc):.2f} {pyunits.get_units(uc)}"
     #         )
-        # for x in b.component_objects([Var, Expression], descend_into=False):
-        #     if "chemical_flow_mass" in x.name or "chemical_soln_flow_mass" in x.name:
-        #         print(f"\n{x.name}: {value(x)}")
-        #         print(
-        #             value(pyunits.convert(x, to_units=pyunits.kg / pyunits.hour))
-        #         )
+    # for x in b.component_objects([Var, Expression], descend_into=False):
+    #     if "chemical_flow_mass" in x.name or "chemical_soln_flow_mass" in x.name:
+    #         print(f"\n{x.name}: {value(x)}")
+    #         print(
+    #             value(pyunits.convert(x, to_units=pyunits.kg / pyunits.hour))
+    #         )

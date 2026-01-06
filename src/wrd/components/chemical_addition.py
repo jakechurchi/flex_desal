@@ -288,4 +288,4 @@ def main(
 
 if __name__ == "__main__":
     chem = "ammonium_sulfate"
-    m = main(chemical_name=chem,Qin=10800)
+    m = main(chemical_name=chem, Qin=10800)
