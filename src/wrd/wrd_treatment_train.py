@@ -467,7 +467,6 @@ def initialize_wrd_system(m):
 
     initialize_brine_disposal(m.fs.disposal)
 
-
 def add_wrd_system_costing(m, source_cost=0.15, cost_RO=False):
 
     m.fs.feed.costing = UnitModelCostingBlock(flowsheet_costing_block=m.fs.costing)
@@ -478,6 +477,10 @@ def add_wrd_system_costing(m, source_cost=0.15, cost_RO=False):
     cost_uv_aop(m.fs.UV_aop, costing_package=m.fs.costing)
     add_brine_disposal_costing(m.fs.disposal, costing_package=m.fs.costing)
     cost_decarbonator(m.fs.decarbonator, costing_package=m.fs.costing)
+    for t in m.fs.tsro_trains:
+        add_ro_stage_costing(
+            m.fs.tsro_train[t], costing_package=m.fs.costing, cost_RO=cost_RO
+        )
     for chem_name in m.fs.chemical_list:
         add_chem_addition_costing(
             blk=m.fs.find_component(chem_name + "_addition"),
