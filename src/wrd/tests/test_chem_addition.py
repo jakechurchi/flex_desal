@@ -5,8 +5,9 @@ from pyomo.util.check_units import assert_units_equivalent
 
 import wrd.components.chemical_addition as ca
 
-flow1 = 10652 # Pre RO flow rate for August 19, 2021 WRD treatment train
-flow2 = 9397 # Post RO flow rate for August 19, 2021 WRD treatment train
+flow1 = 10652  # Pre RO flow rate for August 19, 2021 WRD treatment train
+flow2 = 9397  # Post RO flow rate for August 19, 2021 WRD treatment train
+
 
 @pytest.mark.unit
 def test_chem_addition_missing_data():
