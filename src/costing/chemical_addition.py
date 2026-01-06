@@ -442,7 +442,6 @@ def cost_chemical_addition(blk, cost_capital=False):
     chem_build_rule = chem_build_rule_dict.get(chemical, None)
     if chem_build_rule is None:
         raise ValueError(f"Unrecognized chemical type {chemical} in ChemAddition")
-    
 
     @register_costing_parameter_block(
         build_rule=chem_build_rule, parameter_block_name=chemical
@@ -466,7 +465,7 @@ def cost_chemical_addition(blk, cost_capital=False):
                     to_units=blk.costing_package.base_currency,
                 )
             )
-            
+
         cost_units = pyo.units.get_units(chem_addition_param_blk.cost)
 
         if any(_x in cost_units.to_string() for _x in ["gal", "gallon", "m**3"]):
@@ -474,8 +473,6 @@ def cost_chemical_addition(blk, cost_capital=False):
                 blk.unit_model.chemical_soln_flow_vol, chemical
             )
         else:
-            blk.costing_package.cost_flow(
-                blk.unit_model.chemical_flow_mass, chemical
-            )
+            blk.costing_package.cost_flow(blk.unit_model.chemical_flow_mass, chemical)
 
     cost_chem_addition(blk)
