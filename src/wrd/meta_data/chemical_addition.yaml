@@ -1,131 +1,96 @@
-default:
-  # This is a placeholder that is required by the database class and testing
-  chemical_dosage:
-    value: 1
-    units: mg/L
-  solution_density:
-    value: 1000
-    units: kg/m^3
-  ratio_in_solution:
-    value: 0.5
-    units: dimensionless
-# Values updated for 8/19/21 WRD data
+
 ammonium_sulfate:
   chemical_dosage:
-    value: 2.21
+    value: 2.2
     units: mg/L
   solution_density:
-    value: 1230 # Will want to double check these density values - I just googled them
+    value: 1230
     units: kg/m^3
   ratio_in_solution:
-    value: 0.40
-    # value: 1
+    value: 0.23
     units: dimensionless
   unit_cost: 
     value: 1.89
-    units: USD_2021/gallon # Not sure if year is valid
+    units: USD_2021/gallon 
 sodium_hypochlorite:
   chemical_dosage:
-    value: 8 # Suspecting the dosage is higher than 4 mg/L
+    value: 8.1 # UF + UV/AOP dosing 
     units: mg/L
   solution_density:
-    value: 1196
+    value: 1200
     units: kg/m^3
   ratio_in_solution:
     value: 0.125
-    # value: 1
     units: dimensionless
-  unit_cost: # Adding this so it can be loaded from config when changing the cost values in costing
-    value: 0.76
+  unit_cost: 
+    value: 0.7568
     units: USD_2021/gallon
 sulfuric_acid:
   chemical_dosage:
-    value: 44
+    value: 41.49
     units: mg/L
   solution_density:
-    value: 1835
+    value: 1840
     units: kg/m^3
   ratio_in_solution:
-    # value: 0.93
-    value: 1
+    value: 0.93
     units: dimensionless
-  unit_cost: # Adding this so it can be loaded from config when changing the cost values in costing
+  unit_cost: 
     value: 188.76
-    units: USD_2021/ton # What is the difference between a ton and dry ton?
+    units: USD_2021/ton 
 scale_inhibitor:
   chemical_dosage:
-    value: 4.5
+    value: 4.8
     units: mg/L
   solution_density:
-    value: 1100 # I don't know this actual value
+    value: 1150 
     units: kg/m^3
   ratio_in_solution:
     value: 1
     units: dimensionless
-  unit_cost: # Adding this so it can be loaded from config when changing the cost values in costing
+  unit_cost:
     value: 8.72
-    units: USD_2021/gallon # What is the difference between a ton and dry ton?
-# calcium_chloride: # This chemical seems to have only been used for part of 2021
-#   chemical_dosage:
-#     value: 10
-#     units: mg/L
-#   solution_density:
-#     value: 1781
-#     units: kg/m^3
-#   ratio_in_solution:
-#     value: 1
-#     units: dimensionless
-#   capital_cost:
-#     basis: chemical_flow_mass
-#     cost_factor: TPEC
-#     capital_a_parameter:
-#       value: 900.97
-#       units: USD_2007
-#     capital_b_parameter:
-#       value: 0.6179
-#       units: dimensionless 
-#   unit_cost: # Adding this so it can be loaded from config when changing the cost values in costing
-#     value: 637.55
-#     units: USD_2021/ton # Not sure if year is valid
+    units: USD_2021/gallon 
 calcium_hydroxide: 
   chemical_dosage:
-    value: 19.35
+    value: 17.9
     units: mg/L
   solution_density:
-    value: 1270 # SG is 1.26 * 8.34 lb/gal * 119.8 (kg/m3)/(lb/gal) = 1270 kg/m^3 
+    value: 1300
     units: kg/m^3
   ratio_in_solution:
     value: 0.35
-    # value: 1
     units: dimensionless
-  unit_cost:
-    value: 1.06
-    units: USD_2021/gal
+  unit_cost:    
+    value: 556
+    units: USD_2021/ton
 sodium_hydroxide: 
   chemical_dosage:
-    value: 9.16
+    value: 6.98
     units: mg/L
   solution_density:
-    value: 1270
+    value: 1300
     units: kg/m^3
   ratio_in_solution:
-    # value: 1
     value: 0.25
-    units: dimensionless
-  unit_cost:
-     value: 0.74
-     units: USD_2021/gal # Not sure if year is valid
+    units: dimensionless  
+  unit_cost: 
+    value: 557.55
+    units: USD_2021/ton
 sodium_bisulfite:
   chemical_dosage:
-    value: 9.18
+    value: 9.36
     units: mg/L
   solution_density:
-    value: 1320
+    value: 1200
     units: kg/m^3
   ratio_in_solution:
-    value: 0.40
-    # value: 1
+    value: 0.4
     units: dimensionless
-  unit_cost: # Adding this so it can be loaded from config when changing the cost values in costing
-    value: 534
-    units: USD_2021/ton # Not sure if year is valid
+  # BUG: costing by chem_flow_mass does not result in correct result
+  # unit_cost: 
+  #   value: 534
+  #   units: USD_2021/ton 
+  unit_cost: 
+    value: 2.94 # August 2021 data
+    units: USD_2021/gallon
