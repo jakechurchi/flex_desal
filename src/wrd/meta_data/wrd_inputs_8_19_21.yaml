@@ -58,7 +58,7 @@ pumps:
       value: 112.6
       units: psi
     pump_outlet_pressure: 
-      value: 164.38 
+      value: 164.38
       units: psi
 
 # PRESSUE DROP SHOULD BE DIFFERENT FOR EACH CASE DAY
