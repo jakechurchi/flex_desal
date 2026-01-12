@@ -222,6 +222,7 @@ def main(
 
     return m
 
+
 # TODO: Make sure the input salinityies are accurate!
 def run_august_stages():
     # August 19, 2021 Data
@@ -256,9 +257,9 @@ def run_august_stages():
     # Stage 3
     m = main(
         Qin=384,
-        Cin= 3.6,
+        Cin=3.6,
         Tin=302,
-        Pin=(112.6 - 41.9) * pyunits.psi, #Is this the right pressure?
+        Pin=(112.6 - 41.9) * pyunits.psi,  # Is this the right pressure?
         stage_num=3,
         file="wrd_inputs_8_19_21.yaml",
     )

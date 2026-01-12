@@ -41,7 +41,7 @@ default_ro_config = dict(
     transformation_scheme="BACKWARD",
     transformation_method="dae.finite_difference",
     module_type="spiral_wound",
-    finite_elements=10, #Change this to 1 to apply SD model equations to whole element
+    finite_elements=10,  # Change this to 1 to apply SD model equations to whole element
     has_full_reporting=True,
 )
 
@@ -52,7 +52,7 @@ __all__ = [
     "set_ro_op_conditions",
     "set_ro_scaling",
     "report_ro",
-    "main,"
+    "main,",
 ]
 
 solver = get_solver()
@@ -69,7 +69,7 @@ def build_system(stage_num=1):
 
     m.fs.ro = FlowsheetBlock(dynamic=False)
 
-    build_ro(m.fs.ro, prop_package=m.fs.properties,stage_num=stage_num)
+    build_ro(m.fs.ro, prop_package=m.fs.properties, stage_num=stage_num)
 
     m.fs.product = Product(property_package=m.fs.properties)
     touch_flow_and_conc(m.fs.product)
@@ -181,7 +181,7 @@ def set_ro_scaling(blk):
         set_scaling_factor(c, 1e4)
 
 
-def set_ro_op_conditions(blk, Pout=135,Pin=150):
+def set_ro_op_conditions(blk, Pout=135, Pin=150):
 
     # Set RO configuration for each stage
     print(f"Setting RO {blk.stage_num} operating conditions")
@@ -383,13 +383,13 @@ def add_ro_costing(blk, costing_package=None):
     blk.unit.costing = UnitModelCostingBlock(flowsheet_costing_block=costing_package)
 
 
-def solve_ro_module(Qin=2637,Cin=0.5,Tin=302,Pin=150,Pout=135,stage_num=1):
+def solve_ro_module(Qin=2637, Cin=0.5, Tin=302, Pin=150, Pout=135, stage_num=1):
 
     m = build_system(stage_num=stage_num)
     set_ro_scaling(m.fs.ro)
     calculate_scaling_factors(m)
-    set_inlet_conditions(m,Qin=Qin,Cin=Cin,Tin=Tin,Pin=Pin)
-    set_ro_op_conditions(m.fs.ro,Pout=Pout,Pin=Pin)
+    set_inlet_conditions(m, Qin=Qin, Cin=Cin, Tin=Tin, Pin=Pin)
+    set_ro_op_conditions(m.fs.ro, Pout=Pout, Pin=Pin)
 
     assert degrees_of_freedom(m) == 0
     initialize_system(m)
@@ -402,4 +402,4 @@ def solve_ro_module(Qin=2637,Cin=0.5,Tin=302,Pin=150,Pout=135,stage_num=1):
 
 
 if __name__ == "__main__":
-    m = solve_ro_module(2637,0.5,302,150,135)
+    m = solve_ro_module(2637, 0.5, 302, 150, 135)

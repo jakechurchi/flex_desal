@@ -775,23 +775,21 @@ if __name__ == "__main__":
     num_pro_trains = 1
     file = "wrd_inputs_3_13_21.yaml"
     m = main(num_pro_trains=num_pro_trains, file=file)
-    #See what membrane permeablity would yield the desired recovery (8/19/21 WRD Recoveries)
+    # See what membrane permeablity would yield the desired recovery (8/19/21 WRD Recoveries)
     # m.fs.train[1].stage[1].ro.unit.A_comp.unfix()
     # m.fs.train[1].stage[1].ro.unit.recovery_vol_phase[0, "Liq"].fix(0.6098)
-    
+
     # m.fs.train[1].stage[2].ro.unit.A_comp.unfix()
     # m.fs.train[1].stage[2].ro.unit.recovery_vol_phase[0, "Liq"].fix(0.6172)
-    
+
     # m.fs.tsro_train[1].ro.unit.A_comp.unfix()
     # m.fs.tsro_train[1].ro.unit.recovery_vol_phase[0, "Liq"].fix(0.5161)
-    
+
     # solver = get_solver()
     # results = solver.solve(m)
     # assert_optimal_termination(results)
-    
+
     # m.fs.train[1].stage[1].ro.unit.A_comp.display()
     # m.fs.train[1].stage[2].ro.unit.A_comp.display()
     # m.fs.tsro_train[1].ro.unit.A_comp.display()
     # m.fs.tsro_train[1].ro.feed.properties[0].flow_vol_phase["Liq"].display()
-
-
