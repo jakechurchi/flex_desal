@@ -536,7 +536,7 @@ def report_wrd_comparison_metrics(m, w=30):
                 f'{f"  Stage {j} Pump Power":<{w}s}{value(pyunits.convert(m.fs.train[i].stage[j].pump.unit.work_mechanical[0], to_units=pyunits.kW)):<{w}.3f}{"kW"}'
             )
             print(
-                f'{f"  Stage {j} Perm Flow":<{w}s}{value(pyunits.convert(m.fs.train[i].stage[j].product.properties[0].flow_vol_phase["Liq"], to_units=pyunits.gallons / pyunits.minute)):<{w}.3f}{"gpm"}'
+                f'{f"  Stage {j} Perm Flow":<{w}s}{value(pyunits.convert(m.fs.train[i].stage[j].ro.product.properties[0].flow_vol_phase["Liq"], to_units=pyunits.gallons / pyunits.minute)):<{w}.3f}{"gpm"}'
             )
             print(
                 f'{f"Perm Conc":<{w}s}{value(pyunits.convert(m.fs.train[i].stage[j].ro.unit.mixed_permeate[0].conc_mass_phase_comp["Liq", "NaCl"], to_units=pyunits.mg / pyunits.liter)):<{w}.3f}{f"mg/L"}'
@@ -769,7 +769,7 @@ def main(
     results = solver.solve(m)
     assert_optimal_termination(results)
     report_wrd(m, add_comp_metrics=True)
-
+ 
     return m
 
 
@@ -777,3 +777,21 @@ if __name__ == "__main__":
     num_pro_trains = 1
     file = "wrd_inputs_8_19_21.yaml"
     m = main(num_pro_trains=num_pro_trains, file=file)
+    #See what membrane permeablity would yield the desired recovery (8/19/21 WRD Recoveries)
+    m.fs.train[1].stage[1].ro.unit.A_comp.unfix()
+    m.fs.train[1].stage[1].ro.unit.recovery_vol_phase[0, "Liq"].fix(0.6098)
+    
+    m.fs.train[1].stage[2].ro.unit.A_comp.unfix()
+    m.fs.train[1].stage[2].ro.unit.recovery_vol_phase[0, "Liq"].fix(0.6172)
+    
+    m.fs.tsro_train[1].ro.unit.A_comp.unfix()
+    m.fs.tsro_train[1].ro.unit.recovery_vol_phase[0, "Liq"].fix(0.5161)
+    
+    solver = get_solver()
+    results = solver.solve(m)
+    assert_optimal_termination(results)
+    
+    m.fs.train[1].stage[1].ro.unit.A_comp.display()
+    m.fs.train[1].stage[2].ro.unit.A_comp.display()
+    m.fs.tsro_train[1].ro.unit.A_comp.display()
+    m.fs.tsro_train[1].ro.feed.properties[0].flow_vol_phase["Liq"].display()

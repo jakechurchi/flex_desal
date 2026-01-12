@@ -383,7 +383,7 @@ def add_ro_costing(blk, costing_package=None):
     blk.unit.costing = UnitModelCostingBlock(flowsheet_costing_block=costing_package)
 
 
-def main(Qin=2637,Cin=0.5,Tin=302,Pin=150,Pout=135):
+def solve_ro_module(Qin=2637,Cin=0.5,Tin=302,Pin=150,Pout=135):
 
     m = build_system()
     set_ro_scaling(m.fs.ro)
@@ -402,4 +402,4 @@ def main(Qin=2637,Cin=0.5,Tin=302,Pin=150,Pout=135):
 
 
 if __name__ == "__main__":
-    m = main(2637,0.5,302,150,135)
+    m = solve_ro_module(2637,0.5,302,150,135)
