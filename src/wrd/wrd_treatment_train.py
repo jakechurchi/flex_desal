@@ -677,7 +677,6 @@ def report_wrd(m, w=30, add_comp_metrics=False):
     for chem_name in m.fs.post_treat_chem_list:
         unit = m.fs.find_component(chem_name + "_addition")
         report_chem_addition(unit, w=w)
-
     print(sep)
     report_mixer(m.fs.tsro_brine_mixer, w=w)
     report_mixer(m.fs.uf_disposal_mixer, w=w)
@@ -769,29 +768,30 @@ def main(
     results = solver.solve(m)
     assert_optimal_termination(results)
     report_wrd(m, add_comp_metrics=True)
- 
     return m
 
 
 if __name__ == "__main__":
     num_pro_trains = 1
-    file = "wrd_inputs_8_19_21.yaml"
+    file = "wrd_inputs_3_13_21.yaml"
     m = main(num_pro_trains=num_pro_trains, file=file)
     #See what membrane permeablity would yield the desired recovery (8/19/21 WRD Recoveries)
-    m.fs.train[1].stage[1].ro.unit.A_comp.unfix()
-    m.fs.train[1].stage[1].ro.unit.recovery_vol_phase[0, "Liq"].fix(0.6098)
+    # m.fs.train[1].stage[1].ro.unit.A_comp.unfix()
+    # m.fs.train[1].stage[1].ro.unit.recovery_vol_phase[0, "Liq"].fix(0.6098)
     
-    m.fs.train[1].stage[2].ro.unit.A_comp.unfix()
-    m.fs.train[1].stage[2].ro.unit.recovery_vol_phase[0, "Liq"].fix(0.6172)
+    # m.fs.train[1].stage[2].ro.unit.A_comp.unfix()
+    # m.fs.train[1].stage[2].ro.unit.recovery_vol_phase[0, "Liq"].fix(0.6172)
     
-    m.fs.tsro_train[1].ro.unit.A_comp.unfix()
-    m.fs.tsro_train[1].ro.unit.recovery_vol_phase[0, "Liq"].fix(0.5161)
+    # m.fs.tsro_train[1].ro.unit.A_comp.unfix()
+    # m.fs.tsro_train[1].ro.unit.recovery_vol_phase[0, "Liq"].fix(0.5161)
     
-    solver = get_solver()
-    results = solver.solve(m)
-    assert_optimal_termination(results)
+    # solver = get_solver()
+    # results = solver.solve(m)
+    # assert_optimal_termination(results)
     
-    m.fs.train[1].stage[1].ro.unit.A_comp.display()
-    m.fs.train[1].stage[2].ro.unit.A_comp.display()
-    m.fs.tsro_train[1].ro.unit.A_comp.display()
-    m.fs.tsro_train[1].ro.feed.properties[0].flow_vol_phase["Liq"].display()
+    # m.fs.train[1].stage[1].ro.unit.A_comp.display()
+    # m.fs.train[1].stage[2].ro.unit.A_comp.display()
+    # m.fs.tsro_train[1].ro.unit.A_comp.display()
+    # m.fs.tsro_train[1].ro.feed.properties[0].flow_vol_phase["Liq"].display()
+
+
