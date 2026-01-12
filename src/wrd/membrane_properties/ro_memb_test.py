@@ -58,7 +58,7 @@ __all__ = [
 solver = get_solver()
 
 
-def build_system():
+def build_system(stage_num=1):
     m = ConcreteModel()
     m.fs = FlowsheetBlock(dynamic=False)
     m.fs.properties = NaClParameterBlock()
@@ -69,7 +69,7 @@ def build_system():
 
     m.fs.ro = FlowsheetBlock(dynamic=False)
 
-    build_ro(m.fs.ro, prop_package=m.fs.properties)
+    build_ro(m.fs.ro, prop_package=m.fs.properties,stage_num=stage_num)
 
     m.fs.product = Product(property_package=m.fs.properties)
     touch_flow_and_conc(m.fs.product)
@@ -383,9 +383,9 @@ def add_ro_costing(blk, costing_package=None):
     blk.unit.costing = UnitModelCostingBlock(flowsheet_costing_block=costing_package)
 
 
-def solve_ro_module(Qin=2637,Cin=0.5,Tin=302,Pin=150,Pout=135):
+def solve_ro_module(Qin=2637,Cin=0.5,Tin=302,Pin=150,Pout=135,stage_num=1):
 
-    m = build_system()
+    m = build_system(stage_num=stage_num)
     set_ro_scaling(m.fs.ro)
     calculate_scaling_factors(m)
     set_inlet_conditions(m,Qin=Qin,Cin=Cin,Tin=Tin,Pin=Pin)
