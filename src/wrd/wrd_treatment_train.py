@@ -564,7 +564,7 @@ def report_wrd_comparison_metrics(m, w=30):
             f'{f"  TSRO {t} Pump Power":<{w}s}{value(pyunits.convert(m.fs.tsro_train[t].pump.unit.work_mechanical[0], to_units=pyunits.kW)):<{w}.3f}{"kW"}'
         )
         print(
-            f'{f"  TSRO {t} Perm Flow":<{w}s}{value(pyunits.convert(m.fs.tsro_train[t].product.ro.properties[0].flow_vol_phase["Liq"], to_units=pyunits.gallons / pyunits.minute)):<{w}.3f}{"gpm"}'
+            f'{f"  TSRO {t} Perm Flow":<{w}s}{value(pyunits.convert(m.fs.tsro_train[t].ro.product.properties[0].flow_vol_phase["Liq"], to_units=pyunits.gallons / pyunits.minute)):<{w}.3f}{"gpm"}'
         )
         print(
             f'{f"  TSRO {t} Recovery":<{w}s}{value(m.fs.tsro_train[t].ro.unit.recovery_vol_phase[0, "Liq"])*100:<{w}.3f}{"%"}'
