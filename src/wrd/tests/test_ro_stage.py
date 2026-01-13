@@ -2,6 +2,7 @@ import pytest
 from pyomo.environ import value, units as pyunits
 from wrd.components.ro_stage import main
 
+
 # TODO: Update test perm flowrate values for new model outputs w/ updated A and B
 @pytest.mark.component
 def test_ro_PRO1_8_19_21():

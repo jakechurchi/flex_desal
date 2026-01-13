@@ -121,7 +121,7 @@ if __name__ == "__main__":
 
         # Tabulate all the A and B Values
         permability_values[cleaned_data["DateTime"][i]] = {"A": A_new, "B": B_new}
-    
+
     print(permability_values)
     average_A = sum([v["A"] for v in permability_values.values()]) / len(
         permability_values
@@ -145,4 +145,3 @@ if __name__ == "__main__":
             f"C:\\Users\\rchurchi\\flex_desal\\src\\wrd\\membrane_properties\\memb_perm_values_PRO1_{stage_num}_aug.csv",
             index=False,
         )
-

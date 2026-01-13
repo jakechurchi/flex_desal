@@ -249,6 +249,7 @@ def run_august_stages():
         file="wrd_inputs_8_19_21.yaml",
     )
 
+
 def run_march_stages():
     # March 13, 2021 Data
     # Stage 1
@@ -271,7 +272,7 @@ def run_march_stages():
         file="wrd_inputs_3_13_21.yaml",
     )
 
-      # Stage 3
+    # Stage 3
     m = main(
         Qin=506.5,
         Cin=2.7,
