@@ -251,6 +251,7 @@ def set_ro_op_conditions(blk, Pout=141.9, Pin=152.6):
             f"stage_{blk.stage_num}",
         )
     )
+
     deltaP = (Pout - Pin) * pyunits.psi
     blk.unit.deltaP.fix(deltaP)
 
