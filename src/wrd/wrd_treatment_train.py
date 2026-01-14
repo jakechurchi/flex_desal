@@ -29,7 +29,13 @@ from srp.utils import touch_flow_and_conc
 from models import HeadLoss, Source
 
 
-def build_wrd_system(num_pro_trains=4, num_tsro_trains=None, num_stages=2, file=None):
+def build_wrd_system(
+    num_pro_trains=4,
+    num_tsro_trains=None,
+    num_stages=2,
+    tsro_split_fraction=None,
+    file=None,
+):
 
     if file is None:
         raise ValueError("Input file must be provided to build WRD system.")
@@ -101,7 +107,14 @@ def build_wrd_system(num_pro_trains=4, num_tsro_trains=None, num_stages=2, file=
         outlet_list=[f"to_tsro{i}" for i in m.fs.tsro_trains],
         split_basis=SplittingType.componentFlow,
     )
-    m.fs.tsro_feed_separator.even_split = 1 / len(m.fs.tsro_trains)
+    # m.fs.tsro_feed_separator.even_split = 1 / len(m.fs.tsro_trains)
+
+    if tsro_split_fraction is None:
+        # Even Split
+        m.fs.tsro_feed_separator.split_frac_input = 1 / len(m.fs.tsro_trains)
+    else:
+        m.fs.tsro_feed_separator.split_frac_input = tsro_split_fraction
+
     touch_flow_and_conc(m.fs.tsro_feed_separator)
     m.fs.tsro_train = FlowsheetBlock(m.fs.tsro_trains, dynamic=False)
 
