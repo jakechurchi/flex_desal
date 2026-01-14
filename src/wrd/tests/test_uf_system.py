@@ -74,7 +74,7 @@ def test_uf_system_3_13_21():
 @pytest.mark.component
 def test_uf_system_with_costing():
     m = main(add_costing=True)
-    assert pytest.approx(value(m.fs.costing.SEC), rel=1e-3) == 0.349566 # kWh/m3
+    assert pytest.approx(value(m.fs.costing.SEC), rel=1e-3) == 0.349566  # kWh/m3
 
 
 # @pytest.mark.component

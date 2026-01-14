@@ -48,7 +48,6 @@ def test_uf_train_3_13_21_half():
     assert pytest.approx(value(power), rel=1e-3) == value(expected_power)
 
 
-
 @pytest.mark.component
 def test_uf_train_8_19_21_full():
     m = main(
