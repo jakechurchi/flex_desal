@@ -18,9 +18,9 @@ feed_stream:
   feed_pressure: 
     value: 35.15
     units: psi
-# Pump pressure for Train 2 data on 2/20/21.  
-pumps:
-  pump_1:
+# RO pump pressure for Train 2 data on 2/20/21.  
+ro_pumps:
+  pump_stage1:
     pump_flowrate: # Currently only used for pump tests
       value: 2449.8
       units: gal / min
@@ -33,7 +33,7 @@ pumps:
     pump_outlet_pressure: 
       value: 153.5 
       units: psi 
-  pump_2:
+  pump_stage2:
     pump_flowrate: # Currently only used for pump tests
       value: 983.2
       units: gal /min
@@ -46,7 +46,7 @@ pumps:
     pump_outlet_pressure: 
       value: 157.8 
       units: psi  
-  pump_3:
+  pump_stage3:
     pump_flowrate: # Currently only used for pump tests
       value: 493.1
       units: gal / min
@@ -127,22 +127,22 @@ reverse_osmosis_1d:
       units: psi    
 uf_pumps:
   number_trains: 1 # This number is distinct from the number of RO trains, but they should match for testing
-  pump_1:
+  pump:
     pump_outlet_pressure: # Assuming the outlet pressure is the same for all pumps and equal to the inlet pressure of the ro 
-      value: 35.4
+      value: 60  # This value is based on the value observed on SCADA during a site visit. To be updated with actual UF pump pressure when available
       units: psi 
-  pump_2:
-    pump_outlet_pressure: 
-      value: 35.4
-      units: psi  
-  pump_3:
-    pump_outlet_pressure: 
-      value: 35.4
-      units: psi
-  pump_4:
-    pump_outlet_pressure: 
-      value: 35.4
-      units: psi
+  # pump_train_2:
+  #   pump_outlet_pressure: 
+  #     value: 60
+  #     units: psi  
+  # pump_train_3:
+  #   pump_outlet_pressure: 
+  #     value: 60
+  #     units: psi
+  # pump_train_4:
+  #   pump_outlet_pressure: 
+  #     value: 60
+  #     units: psi
 
 electricity_cost:
   electricity_cost:
