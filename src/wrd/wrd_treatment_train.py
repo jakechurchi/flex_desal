@@ -30,7 +30,7 @@ from models import HeadLoss, Source
 
 
 def build_wrd_system(
-    num_uf_pump = 3,
+    num_uf_pump=3,
     uf_split_fraction=None,
     num_pro_trains=4,
     num_stages=2,
@@ -87,7 +87,11 @@ def build_wrd_system(
 
     # UF
     build_uf_system(
-        m=m, num_trains=num_uf_pump, prop_package=m.fs.properties, file=file, split_fraction=uf_split_fraction
+        m=m,
+        num_trains=num_uf_pump,
+        prop_package=m.fs.properties,
+        file=file,
+        split_fraction=uf_split_fraction,
     )
 
     # PRO System
@@ -758,8 +762,8 @@ def report_wrd_costing_flows(m, w=30):
 
 
 def main(
-    num_uf_pump = 3,   
-    uf_split_fraction=None, 
+    num_uf_pump=3,
+    uf_split_fraction=None,
     num_pro_trains=4,
     num_tsro_trains=None,
     num_pro_stages=2,
@@ -769,7 +773,7 @@ def main(
 
     m = build_wrd_system(
         num_uf_pump=num_uf_pump,
-        uf_split_fraction =uf_split_fraction,
+        uf_split_fraction=uf_split_fraction,
         num_pro_trains=num_pro_trains,
         num_stages=num_pro_stages,
         num_tsro_trains=num_tsro_trains,
@@ -783,7 +787,7 @@ def main(
     set_wrd_inlet_conditions(m)
     set_wrd_operating_conditions(m)
     print(f"{degrees_of_freedom(m)} degrees of freedom after setting op conditions")
-    assert degrees_of_freedom(m) == 0  
+    assert degrees_of_freedom(m) == 0
     initialize_wrd_system(m)
     add_wrd_system_costing(m)
 
@@ -794,7 +798,7 @@ def main(
 
 
 if __name__ == "__main__":
-    num_uf_pump = 3 
+    num_uf_pump = 3
     uf_split_fraction = [0.4, 0.4, 0.2]
     num_pro_trains = 4
     num_tsro_trains = 4
@@ -805,12 +809,12 @@ if __name__ == "__main__":
     m = main(
         num_uf_pump=num_uf_pump,
         uf_split_fraction=uf_split_fraction,
-        num_pro_trains=num_pro_trains, 
+        num_pro_trains=num_pro_trains,
         num_tsro_trains=num_tsro_trains,
         tsro_split_fraction=tsro_split_fraction,
-        file=file
-        )
-    
+        file=file,
+    )
+
     report_wrd(m, add_comp_metrics=True)
 
     # See what membrane permeablity would yield the desired recovery (8/19/21 WRD Recoveries)

@@ -11,7 +11,9 @@ def build_source_cost_param_block(blk):
     m = blk.model()
     costing = blk.parent_block()
     blk.unit_cost = pyo.Var(
-        initialize=get_config_value(m.fs.config_data,"feedwater_cost","feedwater_cost"),
+        initialize=get_config_value(
+            m.fs.config_data, "feedwater_cost", "feedwater_cost"
+        ),
         units=costing.base_currency / pyo.units.m**3,
         doc="Source cost per cubic meter",
     )

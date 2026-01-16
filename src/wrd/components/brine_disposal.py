@@ -131,9 +131,10 @@ def add_brine_disposal_costing(blk, costing_package=None):
         costing_method_arguments={"cost_method": "as_opex"},
     )
 
-    brine_disposal_cost = get_config_value(m.fs.config_data,"brine_disposal_cost","brine_disposal_cost")
-    costing_package.deep_well_injection.dwi_lcow.fix(
-        brine_disposal_cost )
+    brine_disposal_cost = get_config_value(
+        m.fs.config_data, "brine_disposal_cost", "brine_disposal_cost"
+    )
+    costing_package.deep_well_injection.dwi_lcow.fix(brine_disposal_cost)
 
 
 def report_brine_disposal(blk, w=25):
