@@ -71,26 +71,7 @@ def build_system(stage_num=1, file="wrd_inputs_8_19_21.yaml"):
 
     return m
 
-
-def build_pump(
-    blk, stage_num=1, file="wrd_inputs_8_19_21.yaml", prop_package=None, uf=False
-):
-
-    if prop_package is None:
-        m = blk.model()
-        prop_package = m.fs.ro_properties
-
-    blk.config_data = load_config(get_config_file(file))
-    blk.stage_num = stage_num
-
-    blk.feed = StateJunction(property_package=prop_package)
-    touch_flow_and_conc(blk.feed)
-
-    blk.unit = Pump(property_package=prop_package)
-
-    blk.product = StateJunction(property_package=prop_package)
-
-    # Create variable for the efficiency from the pump curves
+def set_pump_efficiency(blk, stage_num=1, uf=False):
     blk.unit.efficiency_fluid = Var(
         initialize=0.7,
         units=pyunits.dimensionless,
@@ -168,6 +149,29 @@ def build_pump(
     )
     blk.unit.efficiency_pump.bounds = (0, 1)
 
+def build_pump(
+    blk, stage_num=1,
+    file="wrd_inputs_8_19_21.yaml",
+    prop_package=None, 
+    uf=False,
+):
+
+    if prop_package is None:
+        m = blk.model()
+        prop_package = m.fs.ro_properties
+
+    blk.config_data = load_config(get_config_file(file))
+    blk.stage_num = stage_num
+
+    blk.feed = StateJunction(property_package=prop_package)
+    touch_flow_and_conc(blk.feed)
+
+    blk.unit = Pump(property_package=prop_package)
+
+    blk.product = StateJunction(property_package=prop_package)
+    set_pump_efficiency(blk, stage_num=stage_num, uf=uf)
+
+    # Create variable for the efficiency from the pump curves
     blk.unit.efficiency_motor = Param(
         initialize=0.938,
         mutable=True,
