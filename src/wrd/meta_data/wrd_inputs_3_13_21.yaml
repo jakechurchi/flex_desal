@@ -136,21 +136,12 @@ headers:
 uf_pumps:
   number_trains: 1 # This number is distinct from the number of RO trains, but they should match for testing
   pump:
-    pump_outlet_pressure: # Assuming the outlet pressure is the same for all pumps and equal to the inlet pressure of the ro 
-      value: 60   # This value is based on the value observed on SCADA during a site visit. To be updated with actual UF pump pressure when available
+    pump_outlet_pressure:  
+      # This value is based on the value observed on SCADA during a site visit. 
+      # To be updated with actual UF pump pressure when available.
+      # Assuming all pump have the same pressure
+      value: 60  
       units: psi 
-  # pump_train_2:
-  #   pump_outlet_pressure: 
-  #     value: 60
-  #     units: psi  
-  # pump_train_3:
-  #   pump_outlet_pressure: 
-  #     value: 60
-  #     units: psi
-  # pump_train_4:
-  #   pump_outlet_pressure: 
-  #     value: 60
-  #     units: psi
 
 # Chemical addition data for 3/13/21
 chemical_addition:
@@ -248,6 +239,7 @@ chemical_addition:
 
 electricity_cost:
   electricity_cost:
+  # Unit cost from ARC Costs SCE Tab, col Q / col R, or total consumption / total cost
     value: 0.146
     units: USD_2021/kWh
 feedwater_cost:

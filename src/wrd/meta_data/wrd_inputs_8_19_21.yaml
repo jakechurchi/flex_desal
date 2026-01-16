@@ -62,7 +62,7 @@ ro_pumps:
       units: psi
 
 # A and B coefficients for the RO system updated for each stage.
-# The A and B values are the average of the WaterTAP modeled A and B for March 2021 data.
+# The A and B values are the average of the WaterTAP modeled A and B for August 2021 data.
 # Data used for each stage is in src/wrd/membrane_properties/cleaned_data...
 reverse_osmosis_1d:
   number_of_trains: 1  # unitless
@@ -138,21 +138,12 @@ uf_pumps:
   number_trains: 1 # This number is uf_pumps now
   pump:
     pump_outlet_pressure:  
-      value: 60  # This value is based on the value observed on SCADA during a site visit. To be updated with actual UF pump pressure when available
+      # This value is based on the value observed on SCADA during a site visit. 
+      # To be updated with actual UF pump pressure when available.
+      # Assuming all pump have the same pressure
+      value: 60  
       units: psi 
-  # pump_train_2:
-  #   pump_outlet_pressure: 
-  #     value: 60
-  #     units: psi  
-  # pump_train_3:
-  #   pump_outlet_pressure: 
-  #     value: 60
-  #     units: psi
-  # pump_train_4:
-  #   pump_outlet_pressure: 
-  #     value: 60
-  #     units: psi
-
+  
 # Chemical addition data for 8/19/21
 chemical_addition:
   ammonium_sulfate:
@@ -249,6 +240,7 @@ chemical_addition:
 
 electricity_cost:
   electricity_cost:
+   # Unit cost from ARC Costs SCE Tab, col Q / col R, or total consumption / total cost
     value: 0.203
     units: USD_2021/kWh
 feedwater_cost:

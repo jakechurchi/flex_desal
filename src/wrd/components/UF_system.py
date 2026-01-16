@@ -317,9 +317,9 @@ def report_uf_system_pumps(m, w=30):
 
 def main(
     add_costing=False,
-    num_trains=4,
+    num_trains=3,
     split_fraction=None,
-    Qin=2637,
+    Qin=10654,
     Cin=0.5,
     file="wrd_inputs_8_19_21.yaml",
 ):
@@ -353,7 +353,7 @@ if __name__ == "__main__":
     m = main(
         num_trains=3,
         split_fraction=[0.4, 0.4, 0.2],
-        Qin=10430,
+        Qin=10654,
         Cin=0.5,
         file="wrd_inputs_8_19_21.yaml",
     )

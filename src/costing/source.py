@@ -4,7 +4,6 @@ from watertap_contrib.reflo.costing.util import (
     make_capital_cost_var,
     make_variable_operating_cost_var,
 )
-from wrd.utilities import get_config_value
 
 
 def build_source_cost_param_block(blk):

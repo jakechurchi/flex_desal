@@ -74,12 +74,9 @@ def test_uf_system_3_13_21():
 @pytest.mark.component
 def test_uf_system_with_costing():
     m = main(add_costing=True)
-    assert pytest.approx(value(m.fs.costing.SEC), rel=1e-3) == 0.349566  # kWh/m3
+    assert pytest.approx(value(m.fs.costing.SEC), rel=1e-3) == 0.1195  # kWh/m3
 
 
-# @pytest.mark.component
-# def test_uf_system_even_split():
-#     m = main()
-#     power = pyunits.convert(m.fs.total_uf_pump_power, to_units=pyunits.kW)
-#     expected_power = 94.7 * pyunits.kW  # Modeled Value
-#     assert pytest.approx(value(power), rel=0.15) == value(expected_power)  # kWh/m3
+@pytest.mark.component
+def test_uf_system_even_split():
+    m = main()
