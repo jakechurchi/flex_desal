@@ -93,10 +93,10 @@ def build_wrd_system(
         file=file,
         split_fraction=uf_split_fraction,
     )
-    #Pressure Drop
+    # Pressure Drop
     m.fs.ro_header = HeadLoss(property_package=m.fs.properties)
     touch_flow_and_conc(m.fs.ro_header)
-    
+
     # PRO System
     build_ro_system(
         m=m,
@@ -240,7 +240,8 @@ def add_wrd_connections(m):
         source=m.fs.uf_product_mixer.outlet, destination=m.fs.ro_header.inlet
     )
     m.fs.ro_header_to_pro = Arc(
-        source=m.fs.ro_header.outlet,destination=m.fs.ro_feed_separator.inlet)
+        source=m.fs.ro_header.outlet, destination=m.fs.ro_feed_separator.inlet
+    )
 
     #####
     m.fs.pro_to_tsro_header = Arc(
@@ -367,12 +368,15 @@ def set_wrd_operating_conditions(m):
     set_uf_system_op_conditions(m)
 
     m.fs.ro_header.RO_header_loss = get_config_value(
-        m.fs.config_data, "ro_header_loss", "headers")
+        m.fs.config_data, "ro_header_loss", "headers"
+    )
     m.fs.ro_header.control_volume.deltaP[0].fix(m.fs.ro_header.RO_header_loss)
 
     set_ro_system_op_conditions(m)
 
-    m.fs.tsro_header.TSRO_header_loss = get_config_value(m.fs.config_data, "tsro_header_loss", "headers")
+    m.fs.tsro_header.TSRO_header_loss = get_config_value(
+        m.fs.config_data, "tsro_header_loss", "headers"
+    )
     m.fs.tsro_header.control_volume.deltaP[0].fix(m.fs.tsro_header.TSRO_header_loss)
 
     for t in m.fs.tsro_trains:
@@ -395,7 +399,6 @@ def set_wrd_operating_conditions(m):
     set_uv_aop_op_conditions(m.fs.UV_aop)
 
     set_decarbonator_op_conditions(m.fs.decarbonator)
-
 
     m.fs.ro_system_product_mixer.outlet.pressure[0].fix(101325)
     m.fs.tsro_brine_mixer.outlet.pressure[0].fix(101325)
@@ -446,8 +449,8 @@ def initialize_wrd_system(m):
 
     propagate_state(m.fs.uf_system_to_ro_header)
     m.fs.ro_header.initialize()
-    
-    propagate_state(m.fs.ro_header_to_pro)  
+
+    propagate_state(m.fs.ro_header_to_pro)
     initialize_ro_system(m)
 
     propagate_state(m.fs.pro_to_ro_system_product_mixer)
@@ -504,7 +507,6 @@ def add_wrd_system_costing(m, cost_RO=False):
 
     m.fs.feed.costing = UnitModelCostingBlock(flowsheet_costing_block=m.fs.costing)
     source_cost = get_config_value(m.fs.config_data, "feedwater_cost", "feedwater_cost")
-    # why is this here if the source cost is set in source.py?
     m.fs.costing.source.unit_cost.fix(source_cost)
 
     add_uf_system_costing(m, costing_package=m.fs.costing)
@@ -512,7 +514,9 @@ def add_wrd_system_costing(m, cost_RO=False):
     cost_uv_aop(m.fs.UV_aop, costing_package=m.fs.costing)
     add_brine_disposal_costing(m.fs.disposal, costing_package=m.fs.costing)
     cost_decarbonator(m.fs.decarbonator, costing_package=m.fs.costing)
-
+    # Brine disposal cost set from yaml
+    # feed_unit_cost = get_config_value(m.fs.config_data, "feedwater_cost", "feedwater_cost")
+    # m.fs.costing.source.unit_cost.fix(feed_unit_cost)
 
     for t in m.fs.tsro_trains:
         add_ro_stage_costing(

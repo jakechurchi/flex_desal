@@ -63,12 +63,24 @@ def test_wrd_treatment_train_8_19_21(num_pro_trains):
     # Brine
     expected_brine_flow_cost = 59162 * pyunits.USD_2021 / pyunits.month
     assert pytest.approx(
-        value(m.fs.disposal.unit.costing.variable_operating_cost), rel=0.35
+        value(
+            pyunits.convert(
+                m.fs.disposal.unit.costing.variable_operating_cost,
+                to_units=pyunits.USD_2021 / pyunits.month,
+            )
+        ),
+        rel=0.35,
     ) == value(expected_brine_flow_cost)
     # Feedwater
     expected_feed_flow_cost = 241400 * pyunits.USD_2021 / pyunits.month
     assert pytest.approx(
-        value(m.fs.feed.costing.variable_operating_cost), rel=0.35
+        value(
+            pyunits.convert(
+                m.fs.feed.costing.variable_operating_cost,
+                to_units=pyunits.USD_2021 / pyunits.month,
+            )
+        ),
+        rel=0.35,
     ) == value(expected_feed_flow_cost)
     # TODO: Add more tests against facility data.
     # power of some pumps, or total plant power use.
@@ -113,10 +125,22 @@ def test_wrd_treatment_train_3_13_21(num_pro_trains):
         # Brine
         expected_brine_flow_cost = 61362 * pyunits.USD_2021 / pyunits.month
         assert pytest.approx(
-            value(m.fs.disposal.unit.costing.variable_operating_cost), rel=0.35
+            value(
+                pyunits.convert(
+                    m.fs.disposal.unit.costing.variable_operating_cost,
+                    to_units=pyunits.USD_2021 / pyunits.month,
+                )
+            ),
+            rel=0.35,
         ) == value(expected_brine_flow_cost)
         # Feedwater
         expected_feed_flow_cost = 205820 * pyunits.USD_2021 / pyunits.month
         assert pytest.approx(
-            value(m.fs.feed.costing.variable_operating_cost), rel=0.35
+            value(
+                pyunits.convert(
+                    m.fs.feed.costing.variable_operating_cost,
+                    to_units=pyunits.USD_2021 / pyunits.month,
+                )
+            ),
+            rel=0.35,
         ) == value(expected_feed_flow_cost)
