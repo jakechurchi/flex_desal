@@ -482,9 +482,11 @@ def initialize_wrd_system(m):
     initialize_brine_disposal(m.fs.disposal)
 
 
-def add_wrd_system_costing(m, source_cost=0.15, cost_RO=False):
+def add_wrd_system_costing(m, cost_RO=False):
 
     m.fs.feed.costing = UnitModelCostingBlock(flowsheet_costing_block=m.fs.costing)
+    source_cost = get_config_value(m.fs.config_data, "feedwater_cost", "feedwater_cost")
+    # why is this here if the source cost is set in source.py?
     m.fs.costing.source.unit_cost.fix(source_cost)
 
     add_uf_system_costing(m, costing_package=m.fs.costing)
@@ -781,9 +783,8 @@ def main(
     set_wrd_inlet_conditions(m)
     set_wrd_operating_conditions(m)
     print(f"{degrees_of_freedom(m)} degrees of freedom after setting op conditions")
-    assert degrees_of_freedom(m) == 0
+    assert degrees_of_freedom(m) == 0  
     initialize_wrd_system(m)
-
     add_wrd_system_costing(m)
 
     solver = get_solver()

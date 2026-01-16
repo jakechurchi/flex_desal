@@ -23,6 +23,7 @@ from watertap_contrib.reflo.unit_models.deep_well_injection import (
 
 from wrd.utilities import load_config, get_config_file
 from srp.utils import touch_flow_and_conc
+from wrd.utilities import get_config_value
 
 solver = get_solver()
 
@@ -120,10 +121,9 @@ def set_inlet_conditions(m, Qin=2637, Cin=0.5, Tin=302, Pin=101325):
     )
 
 
-def add_brine_disposal_costing(blk, costing_package=None, brine_disposal_cost=0.43):
-
+def add_brine_disposal_costing(blk, costing_package=None):
+    m = blk.model()
     if costing_package is None:
-        m = blk.model()
         costing_package = m.fs.costing
 
     blk.unit.costing = UnitModelCostingBlock(
@@ -131,10 +131,9 @@ def add_brine_disposal_costing(blk, costing_package=None, brine_disposal_cost=0.
         costing_method_arguments={"cost_method": "as_opex"},
     )
 
-    # this could be read in from yaml instead
+    brine_disposal_cost = get_config_value(m.fs.config_data,"brine_disposal_cost","brine_disposal_cost")
     costing_package.deep_well_injection.dwi_lcow.fix(
-        brine_disposal_cost * pyunits.USD_2021 / pyunits.m**3
-    )
+        brine_disposal_cost )
 
 
 def report_brine_disposal(blk, w=25):

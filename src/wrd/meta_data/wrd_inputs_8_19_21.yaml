@@ -1,4 +1,4 @@
-# Feed stream for Train 1 data on 8/19/21
+# Feed stream for whole plant on 8/19/21
 feed_stream:
   feed_flow_water: 
     value: 10654
@@ -246,3 +246,11 @@ electricity_cost:
   electricity_cost:
     value: 0.203
     units: USD_2021/kWh
+feedwater_cost:
+  feedwater_cost:
+    value: 0.16
+    units: USD_2021/m**3
+brine_disposal_cost:
+  brine_disposal_cost:
+    value: 0.43
+    units: USD_2021/m**3
