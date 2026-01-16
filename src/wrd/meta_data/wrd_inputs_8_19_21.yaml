@@ -125,14 +125,19 @@ reverse_osmosis_1d:
     pressure_drop: 
       value: -7
       units: psi
-    header_loss:
-      value: -41.9
-      units: psi
+
+headers:
+  ro_header_loss:
+    value: -24.6
+    units: psi
+  tsro_header_loss:
+    value: -41.9
+    units: psi
 
 uf_pumps:
-  number_trains: 1 # This number is unused for now. Assuming PRO trains = UF trains
+  number_trains: 1 # This number is uf_pumps now
   pump:
-    pump_outlet_pressure: # Assuming the outlet pressure is the same for all pumps and equal to the inlet pressure of the ro 
+    pump_outlet_pressure:  
       value: 60  # This value is based on the value observed on SCADA during a site visit. To be updated with actual UF pump pressure when available
       units: psi 
   # pump_train_2:

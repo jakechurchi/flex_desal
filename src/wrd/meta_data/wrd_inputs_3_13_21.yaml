@@ -124,9 +124,15 @@ reverse_osmosis_1d:
     pressure_drop: 
       value: -7.7
       units: psi
-    header_loss:
-      value: -59.3
-      units: psi      
+    
+headers:
+  ro_header_loss:
+    value: -24.6
+    units: psi
+  tsro_header_loss:
+    value: -59.3
+    units: psi
+  
 uf_pumps:
   number_trains: 1 # This number is distinct from the number of RO trains, but they should match for testing
   pump:
@@ -239,6 +245,7 @@ chemical_addition:
     unit_cost: 
       value: 2.66 # August 2021 data 
       units: USD_2021/gallon # Could use $/ton if desired, but must change units in src/costing/chemical_addition.py\
+
 electricity_cost:
   electricity_cost:
     value: 0.146
