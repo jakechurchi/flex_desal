@@ -10,7 +10,7 @@ def build_source_cost_param_block(blk):
 
     costing = blk.parent_block()
     blk.unit_cost = pyo.Var(
-        initialize=0.15,
+        initialize=0.16,
         units=costing.base_currency / pyo.units.m**3,
         doc="Source cost per cubic meter",
     )

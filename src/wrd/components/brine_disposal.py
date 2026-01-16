@@ -120,7 +120,7 @@ def set_inlet_conditions(m, Qin=2637, Cin=0.5, Tin=302, Pin=101325):
     )
 
 
-def add_brine_disposal_costing(blk, costing_package=None, brine_disposal_cost=0.49):
+def add_brine_disposal_costing(blk, costing_package=None, brine_disposal_cost=0.43):
 
     if costing_package is None:
         m = blk.model()
