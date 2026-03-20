@@ -19,7 +19,7 @@ from watertap.property_models.NaCl_T_dep_prop_pack import NaClParameterBlock
 from watertap.core.solvers import get_solver
 
 from wrd.utilities import load_config, get_config_file
-from wrd.components.pump import *
+from wrd.components.detailed_pump import *
 from wrd.components.ro import *
 from srp.utils import touch_flow_and_conc
 

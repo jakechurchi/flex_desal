@@ -225,7 +225,7 @@ def initialize_pump(blk):
     try:
         blk.unit.initialize()
     except:
-        blk.unit.design_speed_fraction.bounds = (0,1.05)
+        blk.unit.design_speed_fraction.bounds = (0,1.1)
         blk.unit.initialize()
 
     propagate_state(blk.unit_to_product)

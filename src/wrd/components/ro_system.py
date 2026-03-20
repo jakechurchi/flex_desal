@@ -30,7 +30,7 @@ from watertap.property_models.NaCl_T_dep_prop_pack import NaClParameterBlock
 from watertap.core.solvers import get_solver
 
 from wrd.components.ro_train import *
-from wrd.components.pump import report_pump
+from wrd.components.detailed_pump import report_pump
 from srp.utils import touch_flow_and_conc
 
 solver = get_solver()

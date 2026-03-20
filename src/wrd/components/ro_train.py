@@ -28,7 +28,7 @@ from watertap.property_models.NaCl_T_dep_prop_pack import NaClParameterBlock
 from watertap.core.solvers import get_solver
 
 from wrd.utilities import load_config, get_config_file
-from wrd.components.pump import *
+from wrd.components.detailed_pump import *
 from wrd.components.ro import *
 from wrd.components.ro_stage import *
 from srp.utils import touch_flow_and_conc
@@ -371,7 +371,3 @@ def main(
 
 if __name__ == "__main__":
     m = main(add_costing=False)
-
-    # m = main(
-    #     Qin=2452, Cin=0.503, Tin=295, Pin=101325, file="wrd_ro_inputs_3_13_21.yaml"
-    # )
