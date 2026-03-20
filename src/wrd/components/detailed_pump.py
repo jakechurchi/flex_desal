@@ -3,11 +3,13 @@ from pyomo.environ import (
     Var,
     Param,
     Constraint,
+    Reals,
     TransformationFactory,
     assert_optimal_termination,
     value,
     units as pyunits,
 )
+from idaes.core.util.model_statistics import degrees_of_freedom
 from pyomo.network import Arc
 
 from idaes.core import FlowsheetBlock, UnitModelCostingBlock
@@ -36,7 +38,7 @@ __all__ = [
 solver = get_solver()
 
 
-def build_system(stage_num=1, file="wrd_inputs_8_19_21.yaml"):
+def build_system(stage_num=1, file="wrd_inputs_8_19_21.yaml", uf=False):
     m = ConcreteModel()
     m.fs = FlowsheetBlock(dynamic=False)
     m.fs.properties = NaClParameterBlock()
@@ -45,7 +47,7 @@ def build_system(stage_num=1, file="wrd_inputs_8_19_21.yaml"):
     m.fs.feed = Feed(property_package=m.fs.properties)
     touch_flow_and_conc(m.fs.feed)
     m.fs.pump = FlowsheetBlock(dynamic=False)
-    build_pump(m.fs.pump, stage_num=stage_num, file=file, prop_package=m.fs.properties)
+    build_pump(m.fs.pump, stage_num=stage_num, file=file, prop_package=m.fs.properties, uf=uf)
 
     m.fs.product = Product(property_package=m.fs.properties)
     touch_flow_and_conc(m.fs.product)
@@ -101,6 +103,12 @@ def build_pump(
             # Checked these are correct from data in src/models/tests
             head_surrogate_coeffs={0: 98.74, 1: -123.07, 2: 442.0, 3: -1920.0}
             efficiency_surrogate_coeffs={0: 0.0677, 1: 5.357, 2: -4.475, 3: -19.578}
+            blk.uf_speed_fraction = Param(
+                initialize=0.7,
+                mutable=True,
+                doc="Fraction of design speed for UF pumps. This is an input used after the initial solve",
+            )
+
         elif stage_num == 1:
             head_surrogate_coeffs={0: 114.22, 1: -410.6, 2: 2729.2, 3: -8089.1}
             efficiency_surrogate_coeffs={0: 0.389, 1: -0.535, 2: 41.373, 3: -138.82}
@@ -179,12 +187,31 @@ def add_pump_scaling(blk):
     set_scaling_factor(blk.unit.work_mechanical[0], 1e-3)
 
 
-def initialize_system(m):
+def initialize_system(m,uf=False):
+    if uf:
+    # Change the bounds for the inlet pressure
+        m.fs.pump.unit.control_volume.properties_in[0].pressure.setlb(None)
+        m.fs.pump.unit.control_volume.properties_in[0].pressure.domain = Reals
 
     m.fs.feed.initialize()
     propagate_state(m.fs.feed_to_pump)
 
     initialize_pump(m.fs.pump)
+
+    if uf:
+        m.fs.pump.unit.design_speed_fraction.fix(m.fs.pump.uf_speed_fraction)
+        m.fs.pump.unit.inlet.flow_mass_phase_comp[0, "Liq", "H2O"].unfix()
+        m.fs.pump.unit.inlet.flow_mass_phase_comp[0, "Liq", "NaCl"].unfix()
+        m.fs.pump.unit.control_volume.properties_in[0].mass_frac_phase_comp["Liq", "NaCl"].fix()
+        calculate_scaling_factors(m)
+        m.fs.pump.unit.initialize()
+        # initialize_pump(m.fs.pump)   
+
+
+        m.fs.feed.initialize()
+        propagate_state(m.fs.feed_to_pump)
+
+            
 
     propagate_state(m.fs.pump_to_product)
     m.fs.product.initialize()
@@ -247,7 +274,10 @@ def report_pump(blk, w=30, add_costing=False):
         f'{f"Work Mech. (kW)":<{w}s}{value(pyunits.convert(work, to_units=pyunits.kW)):<{w}.3f}{"kW"}'
     )
     print(f'{f"Efficiency (-)":<{w}s}{value(blk.unit.efficiency_pump[0]):<{w}.3f}{"-"}')
-    print(f'{f"Speed Ratio (-)":<{w}s}{value(blk.unit.design_speed_fraction):<{w}.3f}{"-"}')
+    if hasattr(blk.unit, "design_speed_fraction"):
+        print(
+            f'{f"Speed Ratio (-)":<{w}s}{value(blk.unit.design_speed_fraction):<{w}.3f}{"-"}'
+        )
 
     if add_costing:
         m = blk.model()
@@ -264,15 +294,19 @@ def main(
     Tin=302,
     Pin=101325,
     stage_num=1,
+    uf=False,
+    uf_pump_speed=None,
     file="wrd_inputs_8_19_21.yaml",
     add_costing=True,
 ):
 
-    m = build_system(stage_num=stage_num, file=file)
+    m = build_system(stage_num=stage_num, file=file, uf=uf)
+    if uf:
+        m.fs.pump.uf_speed_fraction = uf_pump_speed
     add_pump_scaling(m.fs.pump)
     calculate_scaling_factors(m)
     set_inlet_conditions(m, Qin=Qin, Cin=Cin, Tin=Tin, Pin=Pin)
-    set_pump_op_conditions(m.fs.pump)
+    set_pump_op_conditions(m.fs.pump, uf=uf)
 
     if add_costing:
         add_pump_costing(m.fs.pump)
@@ -283,7 +317,7 @@ def main(
             name="SEC",
         )
 
-    initialize_system(m)
+    initialize_system(m,uf=uf)
     assert degrees_of_freedom(m) == 0
     results = solver.solve(m)
     assert_optimal_termination(results)
@@ -295,8 +329,16 @@ def main(
 if __name__ == "__main__":
     # August 19, 2021 Data
     # Stage 1
-    # m = main()
+    m = main()
     # Stage 2
     m = main(Qin=1029, Pin=131.2 * pyunits.psi, stage_num=2)
     # Stage 3
-    # m = main(Qin=384, Pin=(112.6 - 41.9) * pyunits.psi, stage_num=3)
+    m = main(Qin=384, Pin=(112.6 - 41.9) * pyunits.psi, stage_num=3)
+    # UF pump
+    # m = main(
+    #     Qin=3300,
+    #     Pin= -12 * pyunits.psi,
+    #     stage_num=1,
+    #     uf=True,
+    #     uf_pump_speed=0.91,
+    # )
