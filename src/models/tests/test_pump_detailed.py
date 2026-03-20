@@ -217,7 +217,7 @@ def test_data_points():
     m.fs = FlowsheetBlock(dynamic=False)
     m.fs.properties = SeawaterParameterBlock()
     pump_curves_filepath = os.path.join(
-        os.path.dirname(__file__), "test_pump_curves_data.csv"
+        os.path.dirname(__file__), "test_pump_curves_ro_feed.csv"
     )
 
     m.fs.unit = PumpDetailed(
@@ -278,7 +278,7 @@ def test_low_speed():
         variable_efficiency=Efficiency.Flow,
         pump_curve_data_type=PumpCurveDataType.DataSet,
         pump_curves=os.path.join(
-            os.path.dirname(__file__), "test_pump_curves_data_uf.csv"
+            os.path.dirname(__file__), "test_pump_curves_uf.csv"
         ),
     )
     # Input flow and head for initial solve
@@ -340,7 +340,7 @@ def test_negative_inlet_pressure():
         pump_curve_data_type=PumpCurveDataType.DataSet,
         pump_curves=os.path.join(
             os.path.dirname(__file__),
-            "test_pump_curves_data_uf.csv",
+            "test_pump_curves_uf.csv",
         ),
     )
 

@@ -16,7 +16,7 @@ def test_stage_1_pump():
 @pytest.mark.component
 def test_stage_2_pump():
     m = main(Qin=1029, Pin=131.2 * pyunits.psi, stage_num=2)
-    assert pytest.approx(m.fs.pump.unit.work_mechanical[0].value, rel=1e-3) == 105000
+    assert pytest.approx(m.fs.pump.unit.work_mechanical[0].value, rel=1e-3) == 17498
 
 @pytest.mark.skip
 def test_stage_3_pump():

@@ -98,15 +98,17 @@ def build_pump(
 
     else:
         if uf == True:
-            pass
-            # head_surrogate_coeffs={0: 41.9, 1: -112.6, 2: 0, 3: 0}
-            # efficiency_surrogate_coeffs={0: 0.0677, 1: 5.357, 2: -4.475, 3: -19.578}
+            # Checked these are correct from data in src/models/tests
+            head_surrogate_coeffs={0: 98.74, 1: -123.07, 2: 442.0, 3: -1920.0}
+            efficiency_surrogate_coeffs={0: 0.0677, 1: 5.357, 2: -4.475, 3: -19.578}
         elif stage_num == 1:
             head_surrogate_coeffs={0: 114.22, 1: -410.6, 2: 2729.2, 3: -8089.1}
             efficiency_surrogate_coeffs={0: 0.389, 1: -0.535, 2: 41.373, 3: -138.82}
         elif stage_num == 2:
-            head_surrogate_coeffs={0: 41.9, 1: -112.6, 2: 0, 3: 0}
-            efficiency_surrogate_coeffs={0: 0.389, 1: -0.535, 2: 41.373, 3: -138.82}        
+            # Checked these are correct from data in src/models/tests
+            head_surrogate_coeffs={0: 30.51, 1: -41.90, 2: 1015.7, 3: -23998.64}
+            efficiency_surrogate_coeffs={0: 0.071, 1: 20.72, 2: -124.82, 3: -280.32}
+            
         blk.unit = PumpDetailed(
             property_package=prop_package,
             variable_efficiency=Efficiency.Flow,
@@ -115,9 +117,9 @@ def build_pump(
             efficiency_surrogate_coeffs=efficiency_surrogate_coeffs,
         )
 
-        # Defaults
-        blk.unit.system_curve_geometric_head.fix(0)
+        # Default, but for tests with UF, the geometric head should be non zero!        
         blk.unit.ref_speed_fraction.fix(1.0)
+        blk.unit.system_curve_geometric_head.fix(0) 
 
     blk.product = StateJunction(property_package=prop_package)
 
