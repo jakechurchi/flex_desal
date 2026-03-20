@@ -90,15 +90,17 @@ def build_pump(
     if stage_num == 3: 
         # use constant efficiency for TSRO pump
         blk.unit = PumpDetailed(
-            property_package=m.fs.properties,
+            property_package=prop_package,
             variable_efficiency=Efficiency.Fixed,
         )
         # Assuming constant 50% efficiency for TSRO pump
         blk.unit.efficiency_pump.fix(0.50)
+
     else:
         if uf == True:
-            head_surrogate_coeffs={0: 41.9, 1: -112.6, 2: 0, 3: 0}
-            efficiency_surrogate_coeffs={0: 0.0677, 1: 5.357, 2: -4.475, 3: -19.578}
+            pass
+            # head_surrogate_coeffs={0: 41.9, 1: -112.6, 2: 0, 3: 0}
+            # efficiency_surrogate_coeffs={0: 0.0677, 1: 5.357, 2: -4.475, 3: -19.578}
         elif stage_num == 1:
             head_surrogate_coeffs={0: 114.22, 1: -410.6, 2: 2729.2, 3: -8089.1}
             efficiency_surrogate_coeffs={0: 0.389, 1: -0.535, 2: 41.373, 3: -138.82}
@@ -106,123 +108,31 @@ def build_pump(
             head_surrogate_coeffs={0: 41.9, 1: -112.6, 2: 0, 3: 0}
             efficiency_surrogate_coeffs={0: 0.389, 1: -0.535, 2: 41.373, 3: -138.82}        
         blk.unit = PumpDetailed(
-            property_package=m.fs.properties,
+            property_package=prop_package,
             variable_efficiency=Efficiency.Flow,
             pump_curve_data_type=PumpCurveDataType.SurrogateCoefficent,
             head_surrogate_coeffs=head_surrogate_coeffs,
             efficiency_surrogate_coeffs=efficiency_surrogate_coeffs,
         )
 
+        # Defaults
+        blk.unit.system_curve_geometric_head.fix(0)
+        blk.unit.ref_speed_fraction.fix(1.0)
+
     blk.product = StateJunction(property_package=prop_package)
 
-    # Create variable for the efficiency from the pump curves
-    blk.unit.efficiency_fluid = Var(
-        initialize=0.7,
-        units=pyunits.dimensionless,
-        bounds=(0, 1),
-        doc="Efficiency from pump curves",
-    )
-
-    # Load Values for surrogate model
-    if uf:
-        # Below are estimated for 100% speed
-        a_0 = 0.0677
-        a_1 = 5.357
-        a_2 = -4.475
-        a_3 = -19.578
-        # Below are estimated for 75% speed
-        # a_0 = 0.0677
-        # a_1 = 7.142
-        # a_2 = -7.956
-        # a_3 = -46.408
-    elif stage_num == 1:
-        a_0 = 0.389
-        a_1 = -0.535
-        a_2 = 41.373
-        a_3 = -138.82
-    elif stage_num == 2:
-        a_0 = 0.067
-        a_1 = 21.112
-        a_2 = -133.157
-        a_3 = -234.386
-    else:
-        # Still missing TSRO pump curves
-        a_0 = 0.067
-        a_1 = 21.112
-        a_2 = -133.157
-        a_3 = -234.386
-
-    # Create Variables for simple "surrogate"
-    blk.unit.efficiency_constant = Param(
-        initialize=a_0,
-        mutable=True,
-        units=pyunits.dimensionless,
-        doc="Constant term of Efficiency equation",
-    )
-
-    blk.unit.efficiency_linear_coeff = Param(
-        initialize=a_1,
-        mutable=True,
-        units=(pyunits.m**3 / pyunits.s) ** -1,
-        doc="Linear term of Efficiency equation",
-    )
-
-    blk.unit.efficiency_squared_coeff = Param(
-        initialize=a_2,
-        mutable=True,
-        units=(pyunits.m**3 / pyunits.s) ** -2,
-        doc="Squared term of Efficiency equation",
-    )
-
-    blk.unit.efficiency_cubed_coeff = Param(
-        initialize=a_3,
-        mutable=True,
-        units=(pyunits.m**3 / pyunits.s) ** -3,
-        doc="Cubed term of Efficiency equation",
-    )
-
-    flow = blk.feed.properties[0].flow_vol_phase["Liq"]
-
-    blk.unit.eq_efficiency_surr = Constraint(
-        expr=blk.unit.efficiency_fluid
-        == blk.unit.efficiency_cubed_coeff * flow**3
-        + blk.unit.efficiency_squared_coeff * flow**2
-        + blk.unit.efficiency_linear_coeff * flow
-        + blk.unit.efficiency_constant,
-        doc="Efficiency surrogate equation",
-    )
-    blk.unit.efficiency_pump.bounds = (0, 1)
-
-    blk.unit.efficiency_motor = Param(
-        initialize=0.938,
-        mutable=True,
-        units=pyunits.dimensionless,
-        doc="Efficiency of motor and VFD",
-    )
-
-    blk.unit.efficiency_vfd = Param(
-        initialize=0.95,
-        mutable=True,
-        units=pyunits.dimensionless,
-        doc="Efficiency of VFD",
-    )
-
-    blk.unit.efficiency_loss = Param(
-        initialize=0,
-        mutable=True,
-        units=pyunits.dimensionless,
-        doc="Loss factor due to heat, age, wear, etc.",
-    )
-
-    blk.unit.eq_efficiency_electrical = Constraint(
-        expr=blk.unit.efficiency_pump[0]
-        == (
-            blk.unit.efficiency_motor
-            * blk.unit.efficiency_vfd
-            * blk.unit.efficiency_fluid
-        )
-        - blk.unit.efficiency_loss
-    )
+    # Create parameter for additional efficiency losses
+    # REMOVING THIS FOR TIME BEING BECAUSE IT'S NOT BEING USED. MIGHT INTERFERE WITH HOW THE EFFICIENCY IS CALCED IN DETAILED PUMP MODEL
+    # blk.unit.efficiency_loss = Param(
+    #     initialize=0,
+    #     mutable=True,
+    #     units=pyunits.dimensionless,
+    #     doc="Loss factor due to heat, age, wear, etc.",
+    # )
+    # blk.unit.eq_efficiency_electrical = Constraint(
+    #     expr=blk.unit.efficiency_pump[0]
+    #     == blk.unit.efficiency_mechanical[0] - blk.unit.efficiency_loss
+    # )
 
     # Add Arcs
     blk.feed_to_unit = Arc(source=blk.feed.outlet, destination=blk.unit.inlet)
@@ -283,7 +193,11 @@ def initialize_pump(blk):
     blk.feed.initialize()
     propagate_state(blk.feed_to_unit)
 
-    blk.unit.initialize()
+    try:
+        blk.unit.initialize()
+    except:
+        blk.unit.design_speed_fraction.bounds = (0,1.05)
+        blk.unit.initialize()
 
     propagate_state(blk.unit_to_product)
     blk.product.initialize()
@@ -331,6 +245,8 @@ def report_pump(blk, w=30, add_costing=False):
         f'{f"Work Mech. (kW)":<{w}s}{value(pyunits.convert(work, to_units=pyunits.kW)):<{w}.3f}{"kW"}'
     )
     print(f'{f"Efficiency (-)":<{w}s}{value(blk.unit.efficiency_pump[0]):<{w}.3f}{"-"}')
+    print(f'{f"Speed Ratio (-)":<{w}s}{value(blk.unit.design_speed_fraction):<{w}.3f}{"-"}')
+
     if add_costing:
         m = blk.model()
         # Is SEC not appearing on m.fs.costing.display a known issue?
@@ -375,11 +291,10 @@ def main(
 
 
 if __name__ == "__main__":
-
     # August 19, 2021 Data
     # Stage 1
-    m = main()
+    # m = main()
     # Stage 2
     m = main(Qin=1029, Pin=131.2 * pyunits.psi, stage_num=2)
     # Stage 3
-    m = main(Qin=384, Pin=(112.6 - 41.9) * pyunits.psi, stage_num=3)
+    # m = main(Qin=384, Pin=(112.6 - 41.9) * pyunits.psi, stage_num=3)
