@@ -20,6 +20,7 @@ from idaes.core.util.scaling import calculate_scaling_factors, set_scaling_facto
 
 from watertap.costing import WaterTAPCosting
 from watertap.property_models.NaCl_T_dep_prop_pack import NaClParameterBlock
+from watertap.property_models.seawater_prop_pack import SeawaterParameterBlock
 from watertap.core.solvers import get_solver
 
 from wrd.utilities import load_config, get_config_value, get_config_file
@@ -189,29 +190,37 @@ def add_pump_scaling(blk):
 
 def initialize_system(m,uf=False):
     if uf:
-    # Change the bounds for the inlet pressure
+    # Allow negative suction pressure for UF configuration
+        m.fs.feed.properties[0].pressure.setlb(None)
+        m.fs.feed.properties[0].pressure.domain = Reals
+        m.fs.pump.feed.properties[0].pressure.setlb(None)
+        m.fs.pump.feed.properties[0].pressure.domain = Reals
+
+        # Change the bounds for the pump inlet pressure
         m.fs.pump.unit.control_volume.properties_in[0].pressure.setlb(None)
         m.fs.pump.unit.control_volume.properties_in[0].pressure.domain = Reals
 
     m.fs.feed.initialize()
     propagate_state(m.fs.feed_to_pump)
-
     initialize_pump(m.fs.pump)
+    assert degrees_of_freedom(m) == 0
 
     if uf:
+        # Switch from initial guess of flowrate to calculating flowrate from speed and pressure
         m.fs.pump.unit.design_speed_fraction.fix(m.fs.pump.uf_speed_fraction)
-        m.fs.pump.unit.inlet.flow_mass_phase_comp[0, "Liq", "H2O"].unfix()
-        m.fs.pump.unit.inlet.flow_mass_phase_comp[0, "Liq", "NaCl"].unfix()
-        m.fs.pump.unit.control_volume.properties_in[0].mass_frac_phase_comp["Liq", "NaCl"].fix()
+        m.fs.pump.unit.control_volume.properties_in[0].flow_mass_phase_comp["Liq", "H2O"].unfix()
+        m.fs.pump.unit.control_volume.properties_in[0].flow_mass_phase_comp["Liq", "NaCl"].unfix()
+        m.fs.pump.unit.inlet.flow_mass_phase_comp[0, "Liq","H2O"].unfix()
+        m.fs.pump.unit.inlet.flow_mass_phase_comp[0, "Liq","NaCl"].unfix()
+        m.fs.pump.unit.control_volume.properties_in[0].mass_frac_phase_comp["Liq", "NaCl"].fix() 
+
+        # Also unfix flowrate in the feed block which is connected to the pump inlet 
+        m.fs.feed.flow_mass_phase_comp[0,"Liq","H2O"].unfix()
+        m.fs.feed.flow_mass_phase_comp[0,"Liq","NaCl"].unfix()
         calculate_scaling_factors(m)
-        m.fs.pump.unit.initialize()
-        # initialize_pump(m.fs.pump)   
-
-
         m.fs.feed.initialize()
         propagate_state(m.fs.feed_to_pump)
-
-            
+       
 
     propagate_state(m.fs.pump_to_product)
     m.fs.product.initialize()
@@ -328,17 +337,17 @@ def main(
 
 if __name__ == "__main__":
     # August 19, 2021 Data
-    # Stage 1
-    m = main()
-    # Stage 2
-    m = main(Qin=1029, Pin=131.2 * pyunits.psi, stage_num=2)
-    # Stage 3
-    m = main(Qin=384, Pin=(112.6 - 41.9) * pyunits.psi, stage_num=3)
+    # # Stage 1
+    # m = main()
+    # # Stage 2
+    # m = main(Qin=1029, Pin=131.2 * pyunits.psi, stage_num=2)
+    # # Stage 3
+    # m = main(Qin=384, Pin=(112.6 - 41.9) * pyunits.psi, stage_num=3)
     # UF pump
-    # m = main(
-    #     Qin=3300,
-    #     Pin= -12 * pyunits.psi,
-    #     stage_num=1,
-    #     uf=True,
-    #     uf_pump_speed=0.91,
-    # )
+    m = main(
+        Qin=3300, # This number is just a guess, actual flowrate calculated from model
+        Pin= -12 * pyunits.psi,
+        stage_num=1,
+        uf=True,
+        uf_pump_speed=0.91,
+    )

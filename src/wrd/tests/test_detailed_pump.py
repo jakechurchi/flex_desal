@@ -8,7 +8,7 @@ from idaes.core import FlowsheetBlock
 from idaes.core.util.model_statistics import degrees_of_freedom
 from wrd.components.detailed_pump import main
 
-@pytest.mark.component
+@pytest.mark.compoent
 def test_stage_1_pump():
     m = main()
     assert pytest.approx(m.fs.pump.unit.work_mechanical[0].value, rel=1e-3) == 198529
@@ -25,11 +25,12 @@ def test_stage_3_pump():
     assert pytest.approx(m.fs.pump.unit.work_mechanical[0].value, rel=1e-3) == 31296
 
 # NOT FUNCTIONAL YET
-@pytest.mark.skip
+@pytest.mark.component
 def test_uf_pump():
     m = main(
-    Qin=3000,
-    Pin= -12 * pyunits.psi,
-    stage_num=1,
-    uf=True,
-)
+        Qin=3300, # This number is just a guess, actual flowrate calculated from model
+        Pin= -12 * pyunits.psi,
+        stage_num=1,
+        uf=True,
+        uf_pump_speed=0.91,
+    )
