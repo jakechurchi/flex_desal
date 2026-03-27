@@ -24,7 +24,7 @@ from watertap.property_models.NaCl_T_dep_prop_pack import NaClParameterBlock
 from watertap.core.solvers import get_solver
 
 from wrd.utilities import load_config, get_config_file
-from wrd.components.pump import *
+from wrd.components.detailed_pump import *
 from wrd.components.UF_separator import *
 from srp.utils import touch_flow_and_conc
 
@@ -40,14 +40,14 @@ __all__ = [
 solver = get_solver()
 
 
-def build_system(file="wrd_inputs_8_19_21.yaml"):
+def build_system(file="wrd_inputs_8_19_21.yaml",uf_pump_speed=None):
     # Will want to combine all inputs into one yaml instead of having separate ones
     m = ConcreteModel()
     m.fs = FlowsheetBlock(dynamic=False)
     m.fs.properties = NaClParameterBlock()
 
     m.fs.uf_train = FlowsheetBlock(dynamic=False)
-    build_uf_train(m.fs.uf_train, prop_package=m.fs.properties, file=file)
+    build_uf_train(m.fs.uf_train, prop_package=m.fs.properties, file=file, uf_pump_speed=uf_pump_speed)
 
     m.fs.feed = Feed(property_package=m.fs.properties)
     touch_flow_and_conc(m.fs.feed)
@@ -79,7 +79,7 @@ def build_system(file="wrd_inputs_8_19_21.yaml"):
     return m
 
 
-def build_uf_train(blk, file="wrd_inputs_8_19_21.yaml", prop_package=None):
+def build_uf_train(blk, file="wrd_inputs_8_19_21.yaml", prop_package=None, uf_pump_speed=None):
 
     if prop_package is None:
         m = blk.model()
@@ -107,7 +107,7 @@ def build_uf_train(blk, file="wrd_inputs_8_19_21.yaml", prop_package=None):
     touch_flow_and_conc(blk.disposal)
 
     blk.pump = FlowsheetBlock(dynamic=False)
-    build_pump(blk.pump, file=file, prop_package=prop_package, uf=True)
+    build_pump(blk.pump, file=file, prop_package=prop_package, uf=True, uf_pump_speed=uf_pump_speed)
     blk.pump.config_data = (
         blk.config_data
     )  # Will need to revist how config data is being handled
@@ -129,7 +129,6 @@ def build_uf_train(blk, file="wrd_inputs_8_19_21.yaml", prop_package=None):
 
 def set_uf_train_scaling(blk):
     add_pump_scaling(blk.pump)
-    # add_uf_scaling(blk.UF) # Seems like there are no variables to scale for separator
 
 
 def set_inlet_conditions(m, Qin=2637, Cin=0.5, Tin=298, Pin=101325):
@@ -158,6 +157,10 @@ def initialize_system(m):
     propagate_state(m.fs.feed_to_train)
 
     initialize_uf_train(m.fs.uf_train)
+    
+    # This only should be done if head and speed are fixed and flowrate is calculated
+    m.fs.feed.flow_mass_phase_comp[0,"Liq","H2O"].unfix()
+    m.fs.feed.flow_mass_phase_comp[0,"Liq","NaCl"].unfix()
 
     propagate_state(m.fs.train_to_product)
     m.fs.product.initialize()
@@ -169,7 +172,7 @@ def initialize_uf_train(blk):
     blk.feed.initialize()
 
     propagate_state(blk.feed_to_pump)
-    initialize_pump(blk.pump)
+    initialize_pump(blk.pump, uf=True)
 
     propagate_state(blk.pump_to_UF)
     init_separator(blk.UF)
@@ -224,21 +227,23 @@ def report_uf_train(blk, train_num=0, w=30):
 
 
 def main(
-    Qin=2637,
+    Qin=3000, # Guess value
     Cin=0.528,
     Tin=302,
     Pin=101325,
+    uf_pump_speed=0.91,
     file="wrd_inputs_8_19_21.yaml",
     add_costing=True,
 ):
 
-    m = build_system(file=file)
+    m = build_system(file=file, uf_pump_speed=uf_pump_speed)
     set_uf_train_scaling(m.fs.uf_train)
     calculate_scaling_factors(m)
     set_inlet_conditions(m, Qin=Qin, Cin=Cin, Tin=Tin, Pin=Pin)
     set_uf_train_op_conditions(m.fs.uf_train)
     assert degrees_of_freedom(m) == 0
     initialize_system(m)
+    assert degrees_of_freedom(m) == 0
     results = solver.solve(m, tee=True)
     assert_optimal_termination(results)
 

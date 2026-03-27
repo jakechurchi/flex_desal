@@ -39,7 +39,7 @@ __all__ = [
 solver = get_solver()
 
 
-def build_system(stage_num=1, file="wrd_inputs_8_19_21.yaml", uf=False):
+def build_system(stage_num=1, file="wrd_inputs_8_19_21.yaml", uf=False, uf_pump_speed=None):
     m = ConcreteModel()
     m.fs = FlowsheetBlock(dynamic=False)
     m.fs.properties = NaClParameterBlock()
@@ -48,7 +48,7 @@ def build_system(stage_num=1, file="wrd_inputs_8_19_21.yaml", uf=False):
     m.fs.feed = Feed(property_package=m.fs.properties)
     touch_flow_and_conc(m.fs.feed)
     m.fs.pump = FlowsheetBlock(dynamic=False)
-    build_pump(m.fs.pump, stage_num=stage_num, file=file, prop_package=m.fs.properties, uf=uf)
+    build_pump(m.fs.pump, stage_num=stage_num, file=file, prop_package=m.fs.properties, uf=uf, uf_pump_speed=uf_pump_speed)
 
     m.fs.product = Product(property_package=m.fs.properties)
     touch_flow_and_conc(m.fs.product)
@@ -76,7 +76,7 @@ def build_system(stage_num=1, file="wrd_inputs_8_19_21.yaml", uf=False):
 
 
 def build_pump(
-    blk, stage_num=1, file="wrd_inputs_8_19_21.yaml", prop_package=None, uf=False
+    blk, stage_num=1, file="wrd_inputs_8_19_21.yaml", prop_package=None, uf=False, uf_pump_speed=0.7
 ):
 
     if prop_package is None:
@@ -105,7 +105,7 @@ def build_pump(
             head_surrogate_coeffs={0: 98.74, 1: -123.07, 2: 442.0, 3: -1920.0}
             efficiency_surrogate_coeffs={0: 0.0677, 1: 5.357, 2: -4.475, 3: -19.578}
             blk.uf_speed_fraction = Param(
-                initialize=0.7,
+                initialize=uf_pump_speed,
                 mutable=True,
                 doc="Fraction of design speed for UF pumps. This is an input used after the initial solve",
             )
@@ -202,31 +202,23 @@ def initialize_system(m,uf=False):
 
     m.fs.feed.initialize()
     propagate_state(m.fs.feed_to_pump)
-    initialize_pump(m.fs.pump)
-    assert degrees_of_freedom(m) == 0
-
+    initialize_pump(m.fs.pump, uf=uf)
+    # assert degrees_of_freedom(m) == 0
+    
     if uf:
-        # Switch from initial guess of flowrate to calculating flowrate from speed and pressure
-        m.fs.pump.unit.design_speed_fraction.fix(m.fs.pump.uf_speed_fraction)
-        m.fs.pump.unit.control_volume.properties_in[0].flow_mass_phase_comp["Liq", "H2O"].unfix()
-        m.fs.pump.unit.control_volume.properties_in[0].flow_mass_phase_comp["Liq", "NaCl"].unfix()
-        m.fs.pump.unit.inlet.flow_mass_phase_comp[0, "Liq","H2O"].unfix()
-        m.fs.pump.unit.inlet.flow_mass_phase_comp[0, "Liq","NaCl"].unfix()
-        m.fs.pump.unit.control_volume.properties_in[0].mass_frac_phase_comp["Liq", "NaCl"].fix() 
-
         # Also unfix flowrate in the feed block which is connected to the pump inlet 
         m.fs.feed.flow_mass_phase_comp[0,"Liq","H2O"].unfix()
         m.fs.feed.flow_mass_phase_comp[0,"Liq","NaCl"].unfix()
         calculate_scaling_factors(m)
+    
         m.fs.feed.initialize()
         propagate_state(m.fs.feed_to_pump)
-       
 
     propagate_state(m.fs.pump_to_product)
     m.fs.product.initialize()
 
 
-def initialize_pump(blk):
+def initialize_pump(blk,uf=False):
 
     blk.feed.initialize()
     propagate_state(blk.feed_to_unit)
@@ -236,6 +228,15 @@ def initialize_pump(blk):
     except:
         blk.unit.design_speed_fraction.bounds = (0,1.1)
         blk.unit.initialize()
+
+    if uf:
+        # Switch from initial guess of flowrate to calculating flowrate from speed and pressure
+        blk.unit.design_speed_fraction.fix(blk.uf_speed_fraction)
+        blk.unit.control_volume.properties_in[0].flow_mass_phase_comp["Liq", "H2O"].unfix()
+        blk.unit.control_volume.properties_in[0].flow_mass_phase_comp["Liq", "NaCl"].unfix()
+        blk.unit.inlet.flow_mass_phase_comp[0, "Liq","H2O"].unfix()
+        blk.unit.inlet.flow_mass_phase_comp[0, "Liq","NaCl"].unfix()
+        blk.unit.control_volume.properties_in[0].mass_frac_phase_comp["Liq", "NaCl"].fix() 
 
     propagate_state(blk.unit_to_product)
     blk.product.initialize()
@@ -309,9 +310,7 @@ def main(
     add_costing=True,
 ):
 
-    m = build_system(stage_num=stage_num, file=file, uf=uf)
-    if uf:
-        m.fs.pump.uf_speed_fraction = uf_pump_speed
+    m = build_system(stage_num=stage_num, file=file, uf=uf, uf_pump_speed=uf_pump_speed)
     add_pump_scaling(m.fs.pump)
     calculate_scaling_factors(m)
     set_inlet_conditions(m, Qin=Qin, Cin=Cin, Tin=Tin, Pin=Pin)
@@ -353,7 +352,7 @@ if __name__ == "__main__":
     # m = main(Qin=384, Pin=(112.6 - 41.9) * pyunits.psi, stage_num=3)
     # UF pump
     m = main(
-        Qin=2000, # This number is just a guess, actual flowrate calculated from model
+        Qin=3300, # This number is just a guess, actual flowrate calculated from model
         Pin= -12 * pyunits.psi,
         stage_num=1,
         uf=True,
