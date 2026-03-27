@@ -329,7 +329,15 @@ def main(
     initialize_system(m,uf=uf)
     assert degrees_of_freedom(m) == 0
     results = solver.solve(m)
-    assert_optimal_termination(results)
+    try:
+        assert_optimal_termination(results)
+    except Exception as e:
+        if uf:
+            e.args = (
+                "Check initial flowrate guess is reasonable as solver did not find an optimal solution with head and speed fixed."
+                + str(e),
+            )
+        raise
     report_pump(m.fs.pump, add_costing=add_costing)
 
     return m
@@ -345,7 +353,7 @@ if __name__ == "__main__":
     # m = main(Qin=384, Pin=(112.6 - 41.9) * pyunits.psi, stage_num=3)
     # UF pump
     m = main(
-        Qin=3300, # This number is just a guess, actual flowrate calculated from model
+        Qin=2000, # This number is just a guess, actual flowrate calculated from model
         Pin= -12 * pyunits.psi,
         stage_num=1,
         uf=True,
