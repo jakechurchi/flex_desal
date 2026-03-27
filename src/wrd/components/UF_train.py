@@ -3,7 +3,7 @@ from pyomo.environ import (
     assert_optimal_termination,
     units as pyunits,
     value,
-    Set,
+    Reals,
     TransformationFactory,
 )
 from pyomo.network import Arc
@@ -153,6 +153,10 @@ def set_uf_train_op_conditions(blk, split_fractions=None):
 
 
 def initialize_system(m):
+
+    m.fs.feed.properties[0].pressure.setlb(None)
+    m.fs.feed.properties[0].pressure.domain = Reals
+
     m.fs.feed.initialize()
     propagate_state(m.fs.feed_to_train)
 
@@ -169,6 +173,15 @@ def initialize_system(m):
 
 
 def initialize_uf_train(blk):
+    # Allow negative suction pressure through every pressure variable in the
+    # inlet path: train feed junction → pump feed junction → pump CV inlet.
+    blk.feed.properties[0].pressure.setlb(None)
+    blk.feed.properties[0].pressure.domain = Reals
+    blk.pump.feed.properties[0].pressure.setlb(None)
+    blk.pump.feed.properties[0].pressure.domain = Reals
+    blk.pump.unit.control_volume.properties_in[0].pressure.setlb(None)
+    blk.pump.unit.control_volume.properties_in[0].pressure.domain = Reals
+
     blk.feed.initialize()
 
     propagate_state(blk.feed_to_pump)
@@ -266,4 +279,4 @@ def main(
 
 
 if __name__ == "__main__":
-    m = main()
+    m = main(Pin= -12 * pyunits.psi, uf_pump_speed=0.91)

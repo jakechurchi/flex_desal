@@ -106,6 +106,7 @@ def build_pump(
             efficiency_surrogate_coeffs={0: 0.0677, 1: 5.357, 2: -4.475, 3: -19.578}
             blk.uf_speed_fraction = Param(
                 initialize=uf_pump_speed,
+                domain=Reals,
                 mutable=True,
                 doc="Fraction of design speed for UF pumps. This is an input used after the initial solve",
             )
