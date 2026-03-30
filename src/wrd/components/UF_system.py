@@ -2,6 +2,7 @@ from numpy import ones
 from pyomo.environ import (
     ConcreteModel,
     Expression,
+    Reals,
     Set,
     value,
     assert_optimal_termination,
@@ -30,8 +31,10 @@ from watertap.property_models.NaCl_T_dep_prop_pack import NaClParameterBlock
 from watertap.core.solvers import get_solver
 
 from wrd.components.UF_train import *
-from wrd.components.pump import report_pump
+from wrd.components.detailed_pump import report_pump
 from srp.utils import touch_flow_and_conc
+from idaes.core.util.model_diagnostics import DiagnosticsToolbox
+
 
 solver = get_solver()
 
@@ -49,9 +52,10 @@ __all__ = [
 def build_uf_system(
     m=None,
     num_trains=3,
+    speed_fractions=None,
     split_fraction=None,
     prop_package=None,
-    file="wrd_inputs_8_19_21.yaml",
+    file="wrd_inputs_8_19_21.yaml", 
 ):
 
     if m is None:
@@ -76,6 +80,11 @@ def build_uf_system(
     m.fs.uf_trains = Set(initialize=range(1, m.uf_num_trains + 1))
     m.fs.uf_train = FlowsheetBlock(m.fs.uf_trains, dynamic=False)
 
+    if speed_fractions is not None and len(speed_fractions) != num_trains:
+        raise ValueError(
+            f"Expected {num_trains} speed fractions, received {len(speed_fractions)}"
+        )
+
     outlet_list = [f"uf{i}" for i in m.fs.uf_trains]
 
     m.fs.uf_feed_separator = Separator(
@@ -90,6 +99,10 @@ def build_uf_system(
             1.0 / len(outlet_list) * ones(len(outlet_list))
         )
     else:
+        if len(split_fraction) != num_trains:
+            raise ValueError(
+                f"Expected {num_trains} split fractions, received {len(split_fraction)}"
+            )
         m.fs.uf_feed_separator.split_frac_input = split_fraction
 
     perm_inlet_list = [f"uf_prod_inlet{i}" for i in m.fs.uf_trains]
@@ -109,10 +122,14 @@ def build_uf_system(
     )
 
     for i in m.fs.uf_trains:
+        uf_pump_speed = None
+        if speed_fractions is not None:
+            uf_pump_speed = speed_fractions[i - 1]
         build_uf_train(
             m.fs.uf_train[i],
             prop_package=m.fs.properties,
             file=file,
+            uf_pump_speed=uf_pump_speed,
         )
 
     m.fs.total_uf_pump_power = Expression(
@@ -177,14 +194,14 @@ def build_uf_system(
     return m
 
 
-def set_inlet_conditions(m, Qin=2637, Cin=0.5):
+def set_inlet_conditions(m, Qin=2637, Cin=0.5, Tin=298, Pin=101325):
 
     m.fs.feed.properties.calculate_state(
         var_args={
             ("flow_vol_phase", ("Liq")): Qin * pyunits.gallons / pyunits.minute,
             ("conc_mass_phase_comp", ("Liq", "NaCl")): Cin * pyunits.g / pyunits.L,
-            ("pressure", None): 101325,
-            ("temperature", None): 273.15 + 27,
+            ("pressure", None): Pin,
+            ("temperature", None): Tin,
         },
         hold_state=True,
     )
@@ -196,9 +213,16 @@ def set_uf_system_scaling(m):
         set_uf_train_scaling(m.fs.uf_train[i])
 
 
-def set_uf_system_op_conditions(m):
+def set_uf_system_op_conditions(m, speed_fractions=None):
+
+    if speed_fractions is not None and len(speed_fractions) != len(m.fs.uf_trains):
+        raise ValueError(
+            f"Expected {len(m.fs.uf_trains)} speed fractions, received {len(speed_fractions)}"
+        )
 
     for i in m.fs.uf_trains:
+        if speed_fractions is not None:
+            m.fs.uf_train[i].pump.uf_speed_fraction.set_value(speed_fractions[i - 1])
         set_uf_train_op_conditions(m.fs.uf_train[i])
         if i != m.fs.uf_trains.first():
             m.fs.uf_feed_separator.split_fraction[0, f"uf{i}", "H2O"].fix(
@@ -220,6 +244,19 @@ def set_uf_system_op_conditions(m):
 
 
 def initialize_uf_system(m):
+
+    # Allow negative suction pressure through the system-level inlet path:
+    # top-level feed block, the separator inlet (mixed_state), and all
+    # separator outlet states which inherit the same pressure lower bound.
+    if m.standalone:
+        m.fs.feed.properties[0].pressure.setlb(None)
+        m.fs.feed.properties[0].pressure.domain = Reals
+    m.fs.uf_feed_separator.mixed_state[0].pressure.setlb(None)
+    m.fs.uf_feed_separator.mixed_state[0].pressure.domain = Reals
+    for i in m.fs.uf_trains:
+        outlet_state = m.fs.uf_feed_separator.find_component(f"uf{i}_state")
+        outlet_state[0].pressure.setlb(None)
+        outlet_state[0].pressure.domain = Reals
 
     if m.standalone:
         m.fs.feed.initialize()
@@ -246,6 +283,18 @@ def initialize_uf_system(m):
 
         propagate_state(m.fs.uf_disposal_mixer_to_disposal)
         m.fs.disposal.initialize()
+
+    # Use split fractions as initial guesses only; then allow separator to
+    # compute train flow distribution from pump operating conditions.
+    for i in m.fs.uf_trains:
+        if i != m.fs.uf_trains.first():
+            m.fs.uf_feed_separator.split_fraction[0, f"uf{i}", "H2O"].unfix()
+            m.fs.uf_feed_separator.split_fraction[0, f"uf{i}", "NaCl"].unfix()
+
+    if m.standalone:
+        # Let total feed flow be computed from the sum of UF pump flows.
+        m.fs.feed.flow_mass_phase_comp[0, "Liq", "H2O"].unfix()
+        m.fs.feed.flow_mass_phase_comp[0, "Liq", "NaCl"].unfix()
 
 
 def add_uf_system_costing(m, costing_package=None):
@@ -318,17 +367,24 @@ def report_uf_system_pumps(m, w=30):
 def main(
     add_costing=False,
     num_trains=3,
+    speed_fractions=None,
     split_fraction=None,
     Qin=10654,
     Cin=0.5,
+    Pin=101325,
     file="wrd_inputs_8_19_21.yaml",
 ):
 
-    m = build_uf_system(num_trains=num_trains, split_fraction=split_fraction, file=file)
+    m = build_uf_system(
+        num_trains=num_trains,
+        speed_fractions=speed_fractions,
+        split_fraction=split_fraction,
+        file=file,
+    )
     set_uf_system_scaling(m)
     calculate_scaling_factors(m)
-    set_inlet_conditions(m, Qin=Qin, Cin=Cin)
-    set_uf_system_op_conditions(m)
+    set_inlet_conditions(m, Qin=Qin, Cin=Cin, Pin=Pin)
+    set_uf_system_op_conditions(m, speed_fractions=speed_fractions)
     assert degrees_of_freedom(m) == 0
     initialize_uf_system(m)
 
@@ -341,7 +397,7 @@ def main(
             name="SEC",
         )
         m.fs.costing.initialize()
-
+    dt = DiagnosticsToolbox(m)
     results = solver.solve(m)
     assert_optimal_termination(results)
     report_uf_system(m)
@@ -352,11 +408,10 @@ def main(
 if __name__ == "__main__":
     m = main(
         num_trains=3,
-        split_fraction=[0.4, 0.4, 0.2],
+        speed_fractions=[0.91, 0.91, 0.75],
+        split_fraction=[0.375, 0.375, 0.25], # Don't actually know what the split fraction is!
         Qin=10654,
         Cin=0.5,
+        Pin = -12*pyunits.psi,
         file="wrd_inputs_8_19_21.yaml",
     )
-    # m = main(add_costing=False)
-    m.fs.total_uf_pump_power.display()
-    # m.fs.uf_feed_separator.display()

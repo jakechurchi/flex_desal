@@ -150,7 +150,13 @@ def set_uf_train_op_conditions(blk, split_fractions=None):
             "product": {"H2O": 0.99, "NaCl": 0.99},
         }
     set_separator_op_conditions(blk.UF, split_fractions)
-
+    density = 1000 * pyunits.kg / pyunits.m**3
+    geometric_head = pyunits.convert(
+        12 * pyunits.psi / (density * 9.81 * pyunits.m / pyunits.s**2),
+        to_units=pyunits.m,
+    )
+    # Fix pump characteristics
+    blk.pump.unit.system_curve_geometric_head.fix(geometric_head)
 
 def initialize_system(m):
 
@@ -279,4 +285,6 @@ def main(
 
 
 if __name__ == "__main__":
-    m = main(Pin= -12 * pyunits.psi, uf_pump_speed=0.91)
+    # m = main(Pin= -12 * pyunits.psi, uf_pump_speed=0.91)
+
+    m = main(Pin = -12 * pyunits.psi, uf_pump_speed=0.75, Qin = 0.25 * 10654)
