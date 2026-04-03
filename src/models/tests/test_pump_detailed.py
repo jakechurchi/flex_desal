@@ -490,3 +490,4 @@ def test_missing_surrogate_values():
             variable_efficiency=Efficiency.Flow,
             pump_curve_data_type=PumpCurveDataType.SurrogateCoefficent,
         )
+

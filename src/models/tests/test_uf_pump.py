@@ -33,7 +33,7 @@ def test_uf_pump_8_19_full_speed():
         pump_curve_data_type=PumpCurveDataType.DataSet,
         pump_curves=os.path.join(
             os.path.dirname(__file__),
-            "test_pump_curves_data_uf.csv",
+            "test_pump_curves_uf.csv",
         ),
     )
 
@@ -110,7 +110,7 @@ def test_uf_pump_8_19_low_speed():
         pump_curve_data_type=PumpCurveDataType.DataSet,
         pump_curves=os.path.join(
             os.path.dirname(__file__),
-            "test_pump_curves_data_uf.csv",
+            "test_pump_curves_uf.csv",
         ),
     )
 
@@ -124,7 +124,7 @@ def test_uf_pump_8_19_low_speed():
     m.fs.unit.control_volume.properties_in[0].pressure.setlb(None)
     m.fs.unit.control_volume.properties_in[0].pressure.domain = Reals
 
-    feed_pressure_out = 46 * pyunits.psi
+    feed_pressure_out = 50 * pyunits.psi
     feed_mass_frac_TDS = 0.0005
     feed_temperature = 298.15
 

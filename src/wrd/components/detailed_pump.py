@@ -129,7 +129,12 @@ def build_pump(
 
         # Default, but for tests with UF, the geometric head should be non zero!        
         blk.unit.ref_speed_fraction.fix(1.0)
-        blk.unit.system_curve_geometric_head.fix(0) 
+        density = 1000 * pyunits.kg / pyunits.m**3
+        geometric_head =  pyunits.convert(
+        12 * pyunits.psi / (density * 9.81 * pyunits.m / pyunits.s**2),
+        to_units=pyunits.m,
+        )
+        blk.unit.system_curve_geometric_head.fix(geometric_head) 
 
     blk.product = StateJunction(property_package=prop_package)
 
@@ -348,14 +353,14 @@ if __name__ == "__main__":
     # # Stage 1
     # m = main()
     # # Stage 2
-    # m = main(Qin=1029, Pin=131.2 * pyunits.psi, stage_num=2)
+    m = main(Qin=1029, Pin=125 * pyunits.psi, stage_num=2)
     # # Stage 3
     # m = main(Qin=384, Pin=(112.6 - 41.9) * pyunits.psi, stage_num=3)
     # UF pump
-    m = main(
-        Qin=3300, # This number is just a guess, actual flowrate calculated from model
-        Pin= -12 * pyunits.psi,
-        stage_num=1,
-        uf=True,
-        uf_pump_speed=0.91,
-    )
+    # m = main(
+    #     Qin= 2000, # This number is just a guess, actual flowrate calculated from model
+    #     Pin= -12 * pyunits.psi,
+    #     stage_num= 1,
+    #     uf= True,
+    #     uf_pump_speed= 0.70,
+    # )

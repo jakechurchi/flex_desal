@@ -140,7 +140,7 @@ uf_pumps:
       # This value is based on the value observed on SCADA during a site visit. 
       # To be updated with actual UF pump pressure when available.
       # Assuming all pump have the same pressure
-      value: 60  
+      value: 50  
       units: psi 
   
 # Chemical addition data for 8/19/21
