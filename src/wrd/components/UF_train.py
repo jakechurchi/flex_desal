@@ -40,14 +40,19 @@ __all__ = [
 solver = get_solver()
 
 
-def build_system(file="wrd_inputs_8_19_21.yaml",uf_pump_speed=None):
+def build_system(file="wrd_inputs_8_19_21.yaml", uf_pump_speed=None):
     # Will want to combine all inputs into one yaml instead of having separate ones
     m = ConcreteModel()
     m.fs = FlowsheetBlock(dynamic=False)
     m.fs.properties = NaClParameterBlock()
 
     m.fs.uf_train = FlowsheetBlock(dynamic=False)
-    build_uf_train(m.fs.uf_train, prop_package=m.fs.properties, file=file, uf_pump_speed=uf_pump_speed)
+    build_uf_train(
+        m.fs.uf_train,
+        prop_package=m.fs.properties,
+        file=file,
+        uf_pump_speed=uf_pump_speed,
+    )
 
     m.fs.feed = Feed(property_package=m.fs.properties)
     touch_flow_and_conc(m.fs.feed)
@@ -79,7 +84,9 @@ def build_system(file="wrd_inputs_8_19_21.yaml",uf_pump_speed=None):
     return m
 
 
-def build_uf_train(blk, file="wrd_inputs_8_19_21.yaml", prop_package=None, uf_pump_speed=None):
+def build_uf_train(
+    blk, file="wrd_inputs_8_19_21.yaml", prop_package=None, uf_pump_speed=None
+):
 
     if prop_package is None:
         m = blk.model()
@@ -107,7 +114,13 @@ def build_uf_train(blk, file="wrd_inputs_8_19_21.yaml", prop_package=None, uf_pu
     touch_flow_and_conc(blk.disposal)
 
     blk.pump = FlowsheetBlock(dynamic=False)
-    build_pump(blk.pump, file=file, prop_package=prop_package, uf=True, uf_pump_speed=uf_pump_speed)
+    build_pump(
+        blk.pump,
+        file=file,
+        prop_package=prop_package,
+        uf=True,
+        uf_pump_speed=uf_pump_speed,
+    )
     blk.pump.config_data = (
         blk.config_data
     )  # Will need to revist how config data is being handled
@@ -158,6 +171,7 @@ def set_uf_train_op_conditions(blk, split_fractions=None):
     # Fix pump characteristics
     blk.pump.unit.system_curve_geometric_head.fix(geometric_head)
 
+
 def initialize_system(m):
 
     m.fs.feed.properties[0].pressure.setlb(None)
@@ -167,10 +181,10 @@ def initialize_system(m):
     propagate_state(m.fs.feed_to_train)
 
     initialize_uf_train(m.fs.uf_train)
-    
+
     # This only should be done if head and speed are fixed and flowrate is calculated
-    m.fs.feed.flow_mass_phase_comp[0,"Liq","H2O"].unfix()
-    m.fs.feed.flow_mass_phase_comp[0,"Liq","NaCl"].unfix()
+    m.fs.feed.flow_mass_phase_comp[0, "Liq", "H2O"].unfix()
+    m.fs.feed.flow_mass_phase_comp[0, "Liq", "NaCl"].unfix()
 
     propagate_state(m.fs.train_to_product)
     m.fs.product.initialize()
@@ -246,7 +260,7 @@ def report_uf_train(blk, train_num=0, w=30):
 
 
 def main(
-    Qin=3000, # Guess value
+    Qin=3000,  # Guess value
     Cin=0.528,
     Tin=302,
     Pin=101325,
@@ -287,4 +301,4 @@ def main(
 if __name__ == "__main__":
     # m = main(Pin= -12 * pyunits.psi, uf_pump_speed=0.91)
 
-    m = main(Pin = -12 * pyunits.psi, uf_pump_speed=0.75, Qin = 0.25 * 10654)
+    m = main(Pin=-12 * pyunits.psi, uf_pump_speed=0.75, Qin=0.25 * 10654)

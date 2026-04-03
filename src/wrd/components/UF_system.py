@@ -55,7 +55,7 @@ def build_uf_system(
     speed_fractions=None,
     split_fraction=None,
     prop_package=None,
-    file="wrd_inputs_8_19_21.yaml", 
+    file="wrd_inputs_8_19_21.yaml",
 ):
 
     if m is None:
@@ -409,9 +409,13 @@ if __name__ == "__main__":
     m = main(
         num_trains=3,
         speed_fractions=[0.91, 0.91, 0.75],
-        split_fraction=[0.375, 0.375, 0.25], # Don't actually know what the split fraction is!
+        split_fraction=[
+            0.375,
+            0.375,
+            0.25,
+        ],  # Don't actually know what the split fraction is!
         Qin=10654,
         Cin=0.5,
-        Pin = -12*pyunits.psi,
+        Pin=-12 * pyunits.psi,
         file="wrd_inputs_8_19_21.yaml",
     )

@@ -25,7 +25,7 @@ from watertap.core.solvers import get_solver
 
 from wrd.utilities import load_config, get_config_value, get_config_file
 from srp.utils import touch_flow_and_conc
-from models.pump_detailed import PumpDetailed, Efficiency, PumpCurveDataType 
+from models.pump_detailed import PumpDetailed, Efficiency, PumpCurveDataType
 
 __all__ = [
     "build_pump",
@@ -39,7 +39,9 @@ __all__ = [
 solver = get_solver()
 
 
-def build_system(stage_num=1, file="wrd_inputs_8_19_21.yaml", uf=False, uf_pump_speed=None):
+def build_system(
+    stage_num=1, file="wrd_inputs_8_19_21.yaml", uf=False, uf_pump_speed=None
+):
     m = ConcreteModel()
     m.fs = FlowsheetBlock(dynamic=False)
     m.fs.properties = NaClParameterBlock()
@@ -48,7 +50,14 @@ def build_system(stage_num=1, file="wrd_inputs_8_19_21.yaml", uf=False, uf_pump_
     m.fs.feed = Feed(property_package=m.fs.properties)
     touch_flow_and_conc(m.fs.feed)
     m.fs.pump = FlowsheetBlock(dynamic=False)
-    build_pump(m.fs.pump, stage_num=stage_num, file=file, prop_package=m.fs.properties, uf=uf, uf_pump_speed=uf_pump_speed)
+    build_pump(
+        m.fs.pump,
+        stage_num=stage_num,
+        file=file,
+        prop_package=m.fs.properties,
+        uf=uf,
+        uf_pump_speed=uf_pump_speed,
+    )
 
     m.fs.product = Product(property_package=m.fs.properties)
     touch_flow_and_conc(m.fs.product)
@@ -76,7 +85,12 @@ def build_system(stage_num=1, file="wrd_inputs_8_19_21.yaml", uf=False, uf_pump_
 
 
 def build_pump(
-    blk, stage_num=1, file="wrd_inputs_8_19_21.yaml", prop_package=None, uf=False, uf_pump_speed=0.7
+    blk,
+    stage_num=1,
+    file="wrd_inputs_8_19_21.yaml",
+    prop_package=None,
+    uf=False,
+    uf_pump_speed=0.7,
 ):
 
     if prop_package is None:
@@ -89,8 +103,7 @@ def build_pump(
     blk.feed = StateJunction(property_package=prop_package)
     touch_flow_and_conc(blk.feed)
 
-    
-    if stage_num == 3: 
+    if stage_num == 3:
         # use constant efficiency for TSRO pump
         blk.unit = PumpDetailed(
             property_package=prop_package,
@@ -102,8 +115,8 @@ def build_pump(
     else:
         if uf == True:
             # Checked these are correct from data in src/models/tests
-            head_surrogate_coeffs={0: 98.74, 1: -123.07, 2: 442.0, 3: -1920.0}
-            efficiency_surrogate_coeffs={0: 0.0677, 1: 5.357, 2: -4.475, 3: -19.578}
+            head_surrogate_coeffs = {0: 98.74, 1: -123.07, 2: 442.0, 3: -1920.0}
+            efficiency_surrogate_coeffs = {0: 0.0677, 1: 5.357, 2: -4.475, 3: -19.578}
             blk.uf_speed_fraction = Param(
                 initialize=uf_pump_speed,
                 domain=Reals,
@@ -112,13 +125,13 @@ def build_pump(
             )
 
         elif stage_num == 1:
-            head_surrogate_coeffs={0: 114.22, 1: -410.6, 2: 2729.2, 3: -8089.1}
-            efficiency_surrogate_coeffs={0: 0.389, 1: -0.535, 2: 41.373, 3: -138.82}
+            head_surrogate_coeffs = {0: 114.22, 1: -410.6, 2: 2729.2, 3: -8089.1}
+            efficiency_surrogate_coeffs = {0: 0.389, 1: -0.535, 2: 41.373, 3: -138.82}
         elif stage_num == 2:
             # Checked these are correct from data in src/models/tests
-            head_surrogate_coeffs={0: 30.51, 1: -41.90, 2: 1015.7, 3: -23998.64}
-            efficiency_surrogate_coeffs={0: 0.071, 1: 20.72, 2: -124.82, 3: -280.32}
-            
+            head_surrogate_coeffs = {0: 30.51, 1: -41.90, 2: 1015.7, 3: -23998.64}
+            efficiency_surrogate_coeffs = {0: 0.071, 1: 20.72, 2: -124.82, 3: -280.32}
+
         blk.unit = PumpDetailed(
             property_package=prop_package,
             variable_efficiency=Efficiency.Flow,
@@ -127,14 +140,14 @@ def build_pump(
             efficiency_surrogate_coeffs=efficiency_surrogate_coeffs,
         )
 
-        # Default, but for tests with UF, the geometric head should be non zero!        
+        # Default, but for tests with UF, the geometric head should be non zero!
         blk.unit.ref_speed_fraction.fix(1.0)
         density = 1000 * pyunits.kg / pyunits.m**3
-        geometric_head =  pyunits.convert(
-        12 * pyunits.psi / (density * 9.81 * pyunits.m / pyunits.s**2),
-        to_units=pyunits.m,
+        geometric_head = pyunits.convert(
+            12 * pyunits.psi / (density * 9.81 * pyunits.m / pyunits.s**2),
+            to_units=pyunits.m,
         )
-        blk.unit.system_curve_geometric_head.fix(geometric_head) 
+        blk.unit.system_curve_geometric_head.fix(geometric_head)
 
     blk.product = StateJunction(property_package=prop_package)
 
@@ -194,9 +207,9 @@ def add_pump_scaling(blk):
     set_scaling_factor(blk.unit.work_mechanical[0], 1e-3)
 
 
-def initialize_system(m,uf=False):
+def initialize_system(m, uf=False):
     if uf:
-    # Allow negative suction pressure for UF configuration
+        # Allow negative suction pressure for UF configuration
         m.fs.feed.properties[0].pressure.setlb(None)
         m.fs.feed.properties[0].pressure.domain = Reals
         m.fs.pump.feed.properties[0].pressure.setlb(None)
@@ -210,13 +223,13 @@ def initialize_system(m,uf=False):
     propagate_state(m.fs.feed_to_pump)
     initialize_pump(m.fs.pump, uf=uf)
     # assert degrees_of_freedom(m) == 0
-    
+
     if uf:
-        # Also unfix flowrate in the feed block which is connected to the pump inlet 
-        m.fs.feed.flow_mass_phase_comp[0,"Liq","H2O"].unfix()
-        m.fs.feed.flow_mass_phase_comp[0,"Liq","NaCl"].unfix()
+        # Also unfix flowrate in the feed block which is connected to the pump inlet
+        m.fs.feed.flow_mass_phase_comp[0, "Liq", "H2O"].unfix()
+        m.fs.feed.flow_mass_phase_comp[0, "Liq", "NaCl"].unfix()
         calculate_scaling_factors(m)
-    
+
         m.fs.feed.initialize()
         propagate_state(m.fs.feed_to_pump)
 
@@ -224,7 +237,7 @@ def initialize_system(m,uf=False):
     m.fs.product.initialize()
 
 
-def initialize_pump(blk,uf=False):
+def initialize_pump(blk, uf=False):
 
     blk.feed.initialize()
     propagate_state(blk.feed_to_unit)
@@ -232,17 +245,23 @@ def initialize_pump(blk,uf=False):
     try:
         blk.unit.initialize()
     except:
-        blk.unit.design_speed_fraction.bounds = (0,1.1)
+        blk.unit.design_speed_fraction.bounds = (0, 1.1)
         blk.unit.initialize()
 
     if uf:
         # Switch from initial guess of flowrate to calculating flowrate from speed and pressure
         blk.unit.design_speed_fraction.fix(blk.uf_speed_fraction)
-        blk.unit.control_volume.properties_in[0].flow_mass_phase_comp["Liq", "H2O"].unfix()
-        blk.unit.control_volume.properties_in[0].flow_mass_phase_comp["Liq", "NaCl"].unfix()
-        blk.unit.inlet.flow_mass_phase_comp[0, "Liq","H2O"].unfix()
-        blk.unit.inlet.flow_mass_phase_comp[0, "Liq","NaCl"].unfix()
-        blk.unit.control_volume.properties_in[0].mass_frac_phase_comp["Liq", "NaCl"].fix() 
+        blk.unit.control_volume.properties_in[0].flow_mass_phase_comp[
+            "Liq", "H2O"
+        ].unfix()
+        blk.unit.control_volume.properties_in[0].flow_mass_phase_comp[
+            "Liq", "NaCl"
+        ].unfix()
+        blk.unit.inlet.flow_mass_phase_comp[0, "Liq", "H2O"].unfix()
+        blk.unit.inlet.flow_mass_phase_comp[0, "Liq", "NaCl"].unfix()
+        blk.unit.control_volume.properties_in[0].mass_frac_phase_comp[
+            "Liq", "NaCl"
+        ].fix()
 
     propagate_state(blk.unit_to_product)
     blk.product.initialize()
@@ -331,7 +350,7 @@ def main(
             name="SEC",
         )
 
-    initialize_system(m,uf=uf)
+    initialize_system(m, uf=uf)
     assert degrees_of_freedom(m) == 0
     results = solver.solve(m)
     try:

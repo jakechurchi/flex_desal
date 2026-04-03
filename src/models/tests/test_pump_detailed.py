@@ -277,9 +277,7 @@ def test_low_speed():
         property_package=m.fs.properties,
         variable_efficiency=Efficiency.Flow,
         pump_curve_data_type=PumpCurveDataType.DataSet,
-        pump_curves=os.path.join(
-            os.path.dirname(__file__), "test_pump_curves_uf.csv"
-        ),
+        pump_curves=os.path.join(os.path.dirname(__file__), "test_pump_curves_uf.csv"),
     )
     # Input flow and head for initial solve
     feed_flow_vol = 0.12 * pyunits.m**3 / pyunits.s
@@ -490,4 +488,3 @@ def test_missing_surrogate_values():
             variable_efficiency=Efficiency.Flow,
             pump_curve_data_type=PumpCurveDataType.SurrogateCoefficent,
         )
-
