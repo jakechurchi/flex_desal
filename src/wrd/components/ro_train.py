@@ -1,6 +1,8 @@
 from pyomo.environ import (
     ConcreteModel,
+    Constraint,
     Expression,
+    Var,
     value,
     assert_optimal_termination,
     units as pyunits,
@@ -141,8 +143,14 @@ def build_ro_train(
     blk.disposal = StateJunction(property_package=prop_package)
     touch_flow_and_conc(blk.disposal)
 
-    blk.recovery_vol = Expression(
-        expr=blk.product.properties[0].flow_vol_phase["Liq"]
+    blk.recovery_vol = Var(
+        initialize=0.5,
+        bounds=(0, 1),
+        units=pyunits.dimensionless,
+    )
+    blk.recovery_vol_constraint = Constraint(
+        expr=blk.recovery_vol
+        == blk.product.properties[0].flow_vol_phase["Liq"]
         / blk.feed.properties[0].flow_vol_phase["Liq"]
     )
     total_pump_power = 0
@@ -370,4 +378,18 @@ def main(
 
 
 if __name__ == "__main__":
-    m = main(add_costing=False)
+    m = main(Qin=2300,add_costing=False)
+    # Try with unfixed pump outlet pressures but fixed overall recovery
+    m.fs.ro_train.recovery_vol.fix(0.85)
+    m.fs.ro_train.stage[1].pump.unit.control_volume.properties_out[0].pressure.unfix()
+    m.fs.ro_train.stage[2].pump.unit.control_volume.properties_out[0].pressure.unfix()
+    # Add a constraint so that the recovery is the same for both stages
+    m.fs.ro_train.equal_stage_1_2_recovery = Constraint(
+        expr=m.fs.ro_train.stage[1].ro.unit.recovery_vol_phase[0, "Liq"]
+        == m.fs.ro_train.stage[2].ro.unit.recovery_vol_phase[0, "Liq"]
+    )
+
+    assert degrees_of_freedom(m) == 0
+    results = solver.solve(m, tee=True)
+    assert_optimal_termination(results)
+    report_ro_train(m.fs.ro_train, w=30,add_costing=False)
