@@ -5,12 +5,14 @@ from pyomo.environ import (
     units as pyunits,
     value,
     TransformationFactory,
+    Reals,
 )
+from pyomo.util.infeasible import find_infeasible_bounds
 
 from idaes.core.util.initialization import propagate_state
 from idaes.core.util.model_statistics import degrees_of_freedom
 from idaes.core import FlowsheetBlock, UnitModelCostingBlock
-from idaes.models.unit_models import Product, Feed
+from idaes.models.unit_models import Product
 
 from watertap.property_models.NaCl_T_dep_prop_pack import NaClParameterBlock
 from watertap.costing import WaterTAPCosting
@@ -326,7 +328,7 @@ def add_wrd_connections(m):
     TransformationFactory("network.expand_arcs").apply_to(m)
 
 
-def set_wrd_inlet_conditions(m, Qin=None, Cin=None, Tin=None):
+def set_wrd_inlet_conditions(m, Qin=None, Cin=None, Tin=None, Pin=None):
     # IMO it makes sense Qin to be from the yaml for the wrd flowsheet so all case study inputs are in one place.
     # Other component files Q and C can be hard coded for testing.
     if Qin is None:
@@ -348,12 +350,17 @@ def set_wrd_inlet_conditions(m, Qin=None, Cin=None, Tin=None):
     else:
         Tin = Tin * pyunits.K
 
+    if Pin is None:
+        Pin = get_config_value(m.fs.config_data, "feed_pressure", "feed_stream")
+    else:
+        Pin = Pin * pyunits.Pa
+
     m.fs.feed.properties.calculate_state(
         var_args={
             ("flow_vol_phase", ("Liq")): (Qin),
             ("conc_mass_phase_comp", ("Liq", "NaCl")): Cin,
             ("temperature", None): Tin,
-            ("pressure", None): 101325,
+            ("pressure", None): Pin,
         },
         hold_state=True,
     )
@@ -431,7 +438,9 @@ def set_wrd_system_scaling(m):
 
 
 def initialize_wrd_system(m):
-
+    # Allow negative feed pressure
+    m.fs.feed.properties[0].pressure.setlb(None)
+    m.fs.feed.properties[0].pressure.domain = Reals
     m.fs.feed.initialize()
 
     # Initialize pre-UF chemical chain
@@ -456,6 +465,7 @@ def initialize_wrd_system(m):
     propagate_state(m.fs.uf_system_to_pro_header)
     m.fs.pro_header.initialize()
 
+    infeasible_bounds = list(find_infeasible_bounds(m))
     propagate_state(m.fs.pro_header_to_pro)
     initialize_ro_system(m)
 
@@ -827,12 +837,11 @@ def main(
 
 if __name__ == "__main__":
     num_uf_pump = 3
-    uf_split_fraction = [0.4, 0.4, 0.2]
+    uf_split_fraction = [0.36, 0.36, 0.28]
     num_pro_trains = 4
     num_tsro_trains = 4
     tsro_split_fraction = None
-
-    file = "wrd_inputs_8_19_21.yaml"
+    file = "wrd_inputs_2800_gpm.yaml"
 
     m = main(
         num_uf_pump=num_uf_pump,

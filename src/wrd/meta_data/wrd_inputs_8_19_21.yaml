@@ -16,7 +16,7 @@ feed_stream:
     value: 302.2
     units: K
   feed_pressure: 
-    value: 14.5
+    value: -12 # This is because the "inlet pressure" for the feed stream is at bottom of EQ tank.
     units: psi 
 
 uf_pumps:
@@ -142,7 +142,6 @@ headers:
     value: -41.9
     units: psi
 
-
 # Chemical addition data for 8/19/21
 chemical_addition:
   ammonium_sulfate:
@@ -236,7 +235,6 @@ chemical_addition:
     unit_cost: 
       value: 2.94 # August 2021 data 
       units: USD_2021/gallon # Could use $/ton if desired, but must change units in src/costing/chemical_addition.py\
-
 electricity_cost:
   electricity_cost:
    # Unit cost from ARC Costs SCE Tab, col Q / col R, or total consumption / total cost
