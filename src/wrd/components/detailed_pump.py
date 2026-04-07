@@ -102,6 +102,7 @@ def build_pump(
 
     blk.feed = StateJunction(property_package=prop_package)
     touch_flow_and_conc(blk.feed)
+    density = 1000 * pyunits.kg / pyunits.m**3
 
     if stage_num == 3:
         # use constant efficiency for TSRO pump
@@ -123,14 +124,18 @@ def build_pump(
                 mutable=True,
                 doc="Fraction of design speed for UF pumps. This is an input used after the initial solve",
             )
+            geometric_head = pyunits.convert(12 * pyunits.psi / (density * 9.81 * pyunits.m / pyunits.s**2),to_units=pyunits.m)
 
         elif stage_num == 1:
             head_surrogate_coeffs = {0: 114.22, 1: -410.6, 2: 2729.2, 3: -8089.1}
             efficiency_surrogate_coeffs = {0: 0.389, 1: -0.535, 2: 41.373, 3: -138.82}
+            geometric_head = pyunits.convert(0 * pyunits.psi / (density * 9.81 * pyunits.m / pyunits.s**2),to_units=pyunits.m)
+            
         elif stage_num == 2:
             # Checked these are correct from data in src/models/tests
             head_surrogate_coeffs = {0: 30.51, 1: -41.90, 2: 1015.7, 3: -23998.64}
             efficiency_surrogate_coeffs = {0: 0.071, 1: 20.72, 2: -124.82, 3: -280.32}
+            geometric_head = pyunits.convert(0 * pyunits.psi / (density * 9.81 * pyunits.m / pyunits.s**2),to_units=pyunits.m)
 
         blk.unit = PumpDetailed(
             property_package=prop_package,
@@ -142,11 +147,6 @@ def build_pump(
 
         # Default, but for tests with UF, the geometric head should be non zero!
         blk.unit.ref_speed_fraction.fix(1.0)
-        density = 1000 * pyunits.kg / pyunits.m**3
-        geometric_head = pyunits.convert(
-            12 * pyunits.psi / (density * 9.81 * pyunits.m / pyunits.s**2),
-            to_units=pyunits.m,
-        )
         blk.unit.system_curve_geometric_head.fix(geometric_head)
 
     blk.product = StateJunction(property_package=prop_package)
@@ -372,14 +372,14 @@ if __name__ == "__main__":
     # # Stage 1
     # m = main()
     # # Stage 2
-    m = main(Qin=1029, Pin=125 * pyunits.psi, stage_num=2)
+    # m = main(Qin=1029, Pin=125 * pyunits.psi, stage_num=2)
     # # Stage 3
     # m = main(Qin=384, Pin=(112.6 - 41.9) * pyunits.psi, stage_num=3)
     # UF pump
-    # m = main(
-    #     Qin= 2000, # This number is just a guess, actual flowrate calculated from model
-    #     Pin= -12 * pyunits.psi,
-    #     stage_num= 1,
-    #     uf= True,
-    #     uf_pump_speed= 0.70,
-    # )
+    m = main(
+        Qin= 2000, # This number is just a guess, actual flowrate calculated from model
+        Pin= -12 * pyunits.psi,
+        stage_num= 1,
+        uf= True,
+        uf_pump_speed= 0.70,
+    )
