@@ -219,23 +219,12 @@ def initialize_system(m, uf=False):
     m.fs.feed.initialize()
     propagate_state(m.fs.feed_to_pump)
     initialize_pump(m.fs.pump)
-    # assert degrees_of_freedom(m) == 0
-
-    # if uf:
-        # Also unfix flowrate in the feed block which is connected to the pump inlet
-        # m.fs.feed.flow_mass_phase_comp[0, "Liq", "H2O"].unfix()
-        # m.fs.feed.flow_mass_phase_comp[0, "Liq", "NaCl"].unfix()
-        # calculate_scaling_factors(m)
-
-        # m.fs.feed.initialize()
-        # propagate_state(m.fs.feed_to_pump)
 
     propagate_state(m.fs.pump_to_product)
     m.fs.product.initialize()
 
 
 def initialize_pump(blk):
-
     blk.feed.initialize()
     propagate_state(blk.feed_to_unit)
 
@@ -244,21 +233,6 @@ def initialize_pump(blk):
     except:
         blk.unit.design_speed_fraction.bounds = (0, 1.1)
         blk.unit.initialize()
-
-    # if uf:
-    #     # Switch from initial guess of flowrate to calculating flowrate from speed and pressure
-    #     blk.unit.design_speed_fraction.fix(blk.uf_speed_fraction)
-    #     blk.unit.control_volume.properties_in[0].flow_mass_phase_comp[
-    #         "Liq", "H2O"
-    #     ].unfix()
-    #     blk.unit.control_volume.properties_in[0].flow_mass_phase_comp[
-    #         "Liq", "NaCl"
-    #     ].unfix()
-    #     blk.unit.inlet.flow_mass_phase_comp[0, "Liq", "H2O"].unfix()
-    #     blk.unit.inlet.flow_mass_phase_comp[0, "Liq", "NaCl"].unfix()
-    #     blk.unit.control_volume.properties_in[0].mass_frac_phase_comp[
-    #         "Liq", "NaCl"
-    #     ].fix()
 
     propagate_state(blk.unit_to_product)
     blk.product.initialize()

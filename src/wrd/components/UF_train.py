@@ -40,7 +40,7 @@ __all__ = [
 solver = get_solver()
 
 
-def build_system(file="wrd_inputs_8_19_21.yaml", uf_pump_speed=None):
+def build_system(file="wrd_inputs_8_19_21.yaml"):
     # Will want to combine all inputs into one yaml instead of having separate ones
     m = ConcreteModel()
     m.fs = FlowsheetBlock(dynamic=False)
@@ -51,7 +51,6 @@ def build_system(file="wrd_inputs_8_19_21.yaml", uf_pump_speed=None):
         m.fs.uf_train,
         prop_package=m.fs.properties,
         file=file,
-        uf_pump_speed=uf_pump_speed,
     )
 
     m.fs.feed = Feed(property_package=m.fs.properties)
@@ -85,7 +84,7 @@ def build_system(file="wrd_inputs_8_19_21.yaml", uf_pump_speed=None):
 
 
 def build_uf_train(
-    blk, file="wrd_inputs_8_19_21.yaml", prop_package=None, uf_pump_speed=None
+    blk, file="wrd_inputs_8_19_21.yaml", prop_package=None,
 ):
 
     if prop_package is None:
@@ -119,8 +118,7 @@ def build_uf_train(
         file=file,
         prop_package=prop_package,
         uf=True,
-        uf_pump_speed=uf_pump_speed,
-    )
+        )
     blk.pump.config_data = (
         blk.config_data
     )  # Will need to revist how config data is being handled
@@ -182,10 +180,6 @@ def initialize_system(m):
 
     initialize_uf_train(m.fs.uf_train)
 
-    # This only should be done if head and speed are fixed and flowrate is calculated
-    m.fs.feed.flow_mass_phase_comp[0, "Liq", "H2O"].unfix()
-    m.fs.feed.flow_mass_phase_comp[0, "Liq", "NaCl"].unfix()
-
     propagate_state(m.fs.train_to_product)
     m.fs.product.initialize()
     propagate_state(m.fs.train_to_disposal)
@@ -205,7 +199,7 @@ def initialize_uf_train(blk):
     blk.feed.initialize()
 
     propagate_state(blk.feed_to_pump)
-    initialize_pump(blk.pump, uf=True)
+    initialize_pump(blk.pump)
 
     propagate_state(blk.pump_to_UF)
     init_separator(blk.UF)
@@ -264,12 +258,11 @@ def main(
     Cin=0.528,
     Tin=302,
     Pin=101325,
-    uf_pump_speed=0.91,
     file="wrd_inputs_8_19_21.yaml",
     add_costing=True,
 ):
 
-    m = build_system(file=file, uf_pump_speed=uf_pump_speed)
+    m = build_system(file=file)
     set_uf_train_scaling(m.fs.uf_train)
     calculate_scaling_factors(m)
     set_inlet_conditions(m, Qin=Qin, Cin=Cin, Tin=Tin, Pin=Pin)
@@ -299,6 +292,4 @@ def main(
 
 
 if __name__ == "__main__":
-    # m = main(Pin= -12 * pyunits.psi, uf_pump_speed=0.91)
-
-    m = main(Pin=-12 * pyunits.psi, uf_pump_speed=0.75, Qin=0.25 * 10654)
+    m = main(Pin=-12 * pyunits.psi, Qin=0.25 * 10654)

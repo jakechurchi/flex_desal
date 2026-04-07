@@ -19,6 +19,15 @@ feed_stream:
     value: 14.5
     units: psi 
 
+uf_pumps:
+  number_trains: 1 # This number is uf_pumps now
+  pump:
+    pump_outlet_pressure:  
+      # Assuming all pump have the same pressure
+      # Value is plant data 50 psi + a bit to make power and speed values match better
+      value: 53 
+      units: psi 
+
 # RO pump pressure for Train 1 data on 8/19/21.  
 ro_pumps:
   pump_stage_1:
@@ -133,16 +142,7 @@ headers:
     value: -41.9
     units: psi
 
-uf_pumps:
-  number_trains: 1 # This number is uf_pumps now
-  pump:
-    pump_outlet_pressure:  
-      # This value is based on the value observed on SCADA during a site visit. 
-      # To be updated with actual UF pump pressure when available.
-      # Assuming all pump have the same pressure
-      value: 50  
-      units: psi 
-  
+
 # Chemical addition data for 8/19/21
 chemical_addition:
   ammonium_sulfate:
