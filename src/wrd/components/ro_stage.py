@@ -291,5 +291,21 @@ def run_march_stages():
 
 
 if __name__ == "__main__":
-    run_august_stages()
-    run_march_stages()
+    # run_august_stages()
+    # run_march_stages()
+    m = main(
+        Qin=340.86,
+        Cin=2.7,
+        Tin=295,
+        Pin= 112.6 * pyunits.psi,
+        stage_num=3,
+        file="wrd_inputs_2300_gpm.yaml",
+    )
+
+    m.fs.ro_stage.ro.unit.recovery_vol_phase[0, "Liq"].fix(0.5)
+    m.fs.ro_stage.pump.unit.control_volume.properties_out[0].pressure.unfix()
+
+    assert degrees_of_freedom(m) == 0
+    results = solver.solve(m)
+    assert_optimal_termination(results)
+    report_ro_stage(m.fs.ro_stage)

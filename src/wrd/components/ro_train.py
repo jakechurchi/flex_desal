@@ -381,15 +381,15 @@ if __name__ == "__main__":
     m = main(Qin=2300,Pin=35*pyunits.psi,add_costing=False)
     # Try with unfixed pump outlet pressures but fixed overall recovery
     # m.fs.ro_train.recovery_vol.fix(0.85)
-    # m.fs.ro_train.stage[1].pump.unit.control_volume.properties_out[0].pressure.unfix()
-    # m.fs.ro_train.stage[2].pump.unit.control_volume.properties_out[0].pressure.unfix()
+    m.fs.ro_train.stage[1].pump.unit.control_volume.properties_out[0].pressure.unfix()
+    m.fs.ro_train.stage[2].pump.unit.control_volume.properties_out[0].pressure.unfix()
     # # Add a constraint so that the recovery is the same for both stages
     # m.fs.ro_train.equal_stage_1_2_recovery = Constraint(
     #     expr=m.fs.ro_train.stage[1].ro.unit.recovery_vol_phase[0, "Liq"]
     #     == m.fs.ro_train.stage[2].ro.unit.recovery_vol_phase[0, "Liq"]
     # )
-    # m.fs.ro_train.stage[2].ro.unit.recovery_vol_phase[0, "Liq"].fix(.62)
-    # m.fs.ro_train.stage[1].ro.unit.recovery_vol_phase[0, "Liq"].fix(.61)
+    m.fs.ro_train.stage[2].ro.unit.recovery_vol_phase[0, "Liq"].fix(.62)
+    m.fs.ro_train.stage[1].ro.unit.recovery_vol_phase[0, "Liq"].fix(.61)
 
     assert degrees_of_freedom(m) == 0
     results = solver.solve(m, tee=True)

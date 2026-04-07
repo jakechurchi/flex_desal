@@ -19,7 +19,7 @@ from watertap.costing import WaterTAPCosting
 
 from wrd.components.decarbonator import *
 from wrd.components.uv_aop import *
-from wrd.components.pump import *
+from wrd.components.detailed_pump import *
 from wrd.components.UF_system import *
 from wrd.components.ro_system import *
 from wrd.components.ro_stage import *
@@ -841,7 +841,7 @@ if __name__ == "__main__":
     num_pro_trains = 4
     num_tsro_trains = 4
     tsro_split_fraction = None
-    file = "wrd_inputs_2800_gpm.yaml"
+    file = "wrd_inputs_8_19_21.yaml"
 
     m = main(
         num_uf_pump=num_uf_pump,

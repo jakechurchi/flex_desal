@@ -158,7 +158,7 @@ def set_uf_train_op_conditions(blk, split_fractions=None):
     set_pump_op_conditions(blk.pump, uf=True)
     if split_fractions is None:
         split_fractions = {
-            "product": {"H2O": 0.99, "NaCl": 0.99},
+            "product": {"H2O": 0.96, "NaCl": 0.96}, 
         }
     set_separator_op_conditions(blk.UF, split_fractions)
     density = 1000 * pyunits.kg / pyunits.m**3
