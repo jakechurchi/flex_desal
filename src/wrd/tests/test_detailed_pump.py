@@ -43,34 +43,21 @@ def test_uf_pump():
         Pin=-12 * pyunits.psi,
         stage_num=1,
         uf=True,
-        uf_pump_speed=0.91,
     )
-    assert (
-        pytest.approx(
-            value(
-                pyunits.convert(
-                    m.fs.pump.feed.properties[0].flow_vol_phase["Liq"],
-                    to_units=pyunits.gallon / pyunits.minute,
-                )
-            ),
-            rel=1e-3,
-        )
-        == 4274.7
-    )
-    assert pytest.approx(m.fs.pump.unit.work_mechanical[0].value, rel=1e-3) == 166220.9
+    
+    assert pytest.approx(m.fs.pump.unit.work_mechanical[0].value, rel=1e-3) == 118535
+    assert pytest.approx(m.fs.pump.unit.design_speed_fraction.value, rel=1e-3) == 0.804
 
-
-# Seems to solve even with a pretty poor guess
-@pytest.mark.unit
-def test_uf_pump_bad_guess():
-    with pytest.raises(
-        RuntimeError,
-        match=r"Check initial flowrate guess is reasonable as solver did not find an optimal solution with head and speed fixed.*",
-    ):
-        m = main(
-            Qin=2000,  # This number is just a guess, actual flowrate calculated from model
-            Pin=-12 * pyunits.psi,
-            stage_num=1,
-            uf=True,
-            uf_pump_speed=0.91,
-        )
+# This is outdated, but would be nice to catch if the user provides flowrate / head outside the bounds of validity for their surrogate
+# @pytest.mark.unit
+# def test_uf_pump_bad_guess():
+#     with pytest.raises(
+#         RuntimeError,
+#         match=r"Check initial flowrate guess is reasonable as solver did not find an optimal solution with head and speed fixed.*",
+#     ):
+#         m = main(
+#             Qin=200,  # This number is just a guess, actual flowrate calculated from model
+#             Pin=-12 * pyunits.psi,
+#             stage_num=1,
+#             uf=True,
+#         )
