@@ -264,7 +264,7 @@ def initialize_uf_system(m):
 
         propagate_state(m.fs.uf_disposal_mixer_to_disposal)
         m.fs.disposal.initialize()
-        
+
 
 def add_uf_system_costing(m, costing_package=None):
 

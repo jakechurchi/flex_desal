@@ -379,7 +379,7 @@ def main(
 
 
 if __name__ == "__main__":
-    m = main(Qin=2300,Pin=35*pyunits.psi,add_costing=False)
+    m = main(Qin=2300, Pin=35 * pyunits.psi, add_costing=False)
     # Try with unfixed pump outlet pressures but fixed overall recovery
     m.fs.ro_train.recovery_vol.fix(0.92)
     m.fs.ro_train.stage[1].pump.unit.control_volume.properties_out[0].pressure.unfix()
@@ -395,4 +395,4 @@ if __name__ == "__main__":
 
     results = solver.solve(m, tee=True)
     assert_optimal_termination(results)
-    report_ro_train(m.fs.ro_train, w=30,add_costing=False)
+    report_ro_train(m.fs.ro_train, w=30, add_costing=False)

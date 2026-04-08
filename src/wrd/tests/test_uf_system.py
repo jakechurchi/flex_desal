@@ -2,6 +2,7 @@ import pytest
 from pyomo.environ import value, units as pyunits
 from wrd.components.UF_system import main
 
+
 # TODO: Move these tests into the test day file once merged in with the standardized testing PR
 @pytest.mark.skip
 def test_uf_system_8_19_21():

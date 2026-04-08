@@ -84,7 +84,9 @@ def build_system(file="wrd_inputs_8_19_21.yaml"):
 
 
 def build_uf_train(
-    blk, file="wrd_inputs_8_19_21.yaml", prop_package=None,
+    blk,
+    file="wrd_inputs_8_19_21.yaml",
+    prop_package=None,
 ):
 
     if prop_package is None:
@@ -118,7 +120,7 @@ def build_uf_train(
         file=file,
         prop_package=prop_package,
         uf=True,
-        )
+    )
     blk.pump.config_data = (
         blk.config_data
     )  # Will need to revist how config data is being handled
@@ -158,7 +160,7 @@ def set_uf_train_op_conditions(blk, split_fractions=None):
     set_pump_op_conditions(blk.pump, uf=True)
     if split_fractions is None:
         split_fractions = {
-            "product": {"H2O": 0.96, "NaCl": 0.96}, 
+            "product": {"H2O": 0.96, "NaCl": 0.96},
         }
     set_separator_op_conditions(blk.UF, split_fractions)
     density = 1000 * pyunits.kg / pyunits.m**3

@@ -39,8 +39,7 @@ __all__ = [
 solver = get_solver()
 
 
-def build_system(
-    stage_num=1, file="wrd_inputs_8_19_21.yaml", uf=False):
+def build_system(stage_num=1, file="wrd_inputs_8_19_21.yaml", uf=False):
     m = ConcreteModel()
     m.fs = FlowsheetBlock(dynamic=False)
     m.fs.properties = NaClParameterBlock()
@@ -121,18 +120,27 @@ def build_pump(
             #     mutable=True,
             #     doc="Fraction of design speed for UF pumps. This is an input used after the initial solve",
             # )
-            geometric_head = pyunits.convert(12 * pyunits.psi / (density * 9.81 * pyunits.m / pyunits.s**2),to_units=pyunits.m)
+            geometric_head = pyunits.convert(
+                12 * pyunits.psi / (density * 9.81 * pyunits.m / pyunits.s**2),
+                to_units=pyunits.m,
+            )
 
         elif stage_num == 1:
             head_surrogate_coeffs = {0: 114.22, 1: -410.6, 2: 2729.2, 3: -8089.1}
             efficiency_surrogate_coeffs = {0: 0.389, 1: -0.535, 2: 41.373, 3: -138.82}
-            geometric_head = pyunits.convert(0 * pyunits.psi / (density * 9.81 * pyunits.m / pyunits.s**2),to_units=pyunits.m)
-            
+            geometric_head = pyunits.convert(
+                0 * pyunits.psi / (density * 9.81 * pyunits.m / pyunits.s**2),
+                to_units=pyunits.m,
+            )
+
         elif stage_num == 2:
             # Checked these are correct from data in src/models/tests
             head_surrogate_coeffs = {0: 30.51, 1: -41.90, 2: 1015.7, 3: -23998.64}
             efficiency_surrogate_coeffs = {0: 0.071, 1: 20.72, 2: -124.82, 3: -280.32}
-            geometric_head = pyunits.convert(0 * pyunits.psi / (density * 9.81 * pyunits.m / pyunits.s**2),to_units=pyunits.m)
+            geometric_head = pyunits.convert(
+                0 * pyunits.psi / (density * 9.81 * pyunits.m / pyunits.s**2),
+                to_units=pyunits.m,
+            )
 
         blk.unit = PumpDetailed(
             property_package=prop_package,
@@ -205,7 +213,7 @@ def add_pump_scaling(blk):
 
 
 def initialize_system(m, uf=False):
-    if uf: 
+    if uf:
         # Allow negative suction pressure for UF configuration
         m.fs.feed.properties[0].pressure.setlb(None)
         m.fs.feed.properties[0].pressure.domain = Reals
@@ -340,14 +348,14 @@ def main(
 if __name__ == "__main__":
     # August 19, 2021 Data
     # Stage 1
-    for pin in [14.5, 35.4]: #[10, 15, 20, 25, 30,35, 40]: 
+    for pin in [14.5, 35.4]:  # [10, 15, 20, 25, 30,35, 40]:
         m = main(Pin=pin * pyunits.psi, stage_num=1, file="wrd_inputs_8_19_21.yaml")
 
     # m.fs.pump.unit.control_volume.properties_out[0].pressure.unfix()
     # m.fs.pump.unit.design_speed_fraction.fix(.99)
     # results = solver.solve(m)
     # report_pump(m.fs.pump, add_costing=True)
-    
+
     # # Stage 2
     # m = main(Qin=1029, Pin=125 * pyunits.psi, stage_num=2)
     # # Stage 3

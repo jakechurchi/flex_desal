@@ -297,7 +297,7 @@ if __name__ == "__main__":
         Qin=340.86,
         Cin=2.7,
         Tin=295,
-        Pin= 112.6 * pyunits.psi,
+        Pin=112.6 * pyunits.psi,
         stage_num=3,
         file="wrd_inputs_2300_gpm.yaml",
     )

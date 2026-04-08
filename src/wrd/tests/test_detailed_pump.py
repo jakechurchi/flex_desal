@@ -13,7 +13,7 @@ def test_stage_1_pump():
     expected_power = 196.25  # kW
     assert value(
         pyunits.convert(m.fs.pump.unit.work_mechanical[0], to_units=pyunits.kW)
-    ) == pytest.approx(expected_power, rel=.15)
+    ) == pytest.approx(expected_power, rel=0.15)
 
 
 @pytest.mark.unit
@@ -24,7 +24,9 @@ def test_stage_2_pump():
     expected_power = 22.7  # kW
     assert value(
         pyunits.convert(m.fs.pump.unit.work_mechanical[0], to_units=pyunits.kW)
-    ) == pytest.approx(expected_power, rel=0.5) #change to 0.15
+    ) == pytest.approx(
+        expected_power, rel=0.5
+    )  # change to 0.15
     # assert value(m.fs.pump.unit.design_speed_fraction) == pytest.approx(0.5, rel=1e-3)
 
 
@@ -44,9 +46,10 @@ def test_uf_pump():
         stage_num=1,
         uf=True,
     )
-    
+
     assert pytest.approx(m.fs.pump.unit.work_mechanical[0].value, rel=1e-3) == 118535
     assert pytest.approx(m.fs.pump.unit.design_speed_fraction.value, rel=1e-3) == 0.804
+
 
 # This is outdated, but would be nice to catch if the user provides flowrate / head outside the bounds of validity for their surrogate
 # @pytest.mark.unit
