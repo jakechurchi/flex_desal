@@ -6,6 +6,7 @@ from pyomo.environ import (
     value,
     TransformationFactory,
     Reals,
+    Objective,
 )
 from pyomo.util.infeasible import find_infeasible_bounds
 
@@ -825,6 +826,7 @@ def main(
     print(f"{degrees_of_freedom(m)} degrees of freedom after setting op conditions")
     assert degrees_of_freedom(m) == 0
     initialize_wrd_system(m)
+    
     add_wrd_system_costing(m)
 
     solver = get_solver()
@@ -851,10 +853,10 @@ if __name__ == "__main__":
         tsro_split_fraction=tsro_split_fraction,
         file=file,
     )
-
+    
     report_wrd(m, add_comp_metrics=True)
 
-    # See what membrane permeablity would yield the desired recovery (8/19/21 WRD Recoveries)
+    ###### See what membrane permeablity would yield the desired recovery (8/19/21 WRD Recoveries)
     # m.fs.train[1].stage[1].ro.unit.A_comp.unfix()
     # m.fs.train[1].stage[1].ro.unit.recovery_vol_phase[0, "Liq"].fix(0.6098)
 
@@ -872,3 +874,22 @@ if __name__ == "__main__":
     # m.fs.train[1].stage[2].ro.unit.A_comp.display()
     # m.fs.tsro_train[1].ro.unit.A_comp.display()
     # m.fs.tsro_train[1].ro.feed.properties[0].flow_vol_phase["Liq"].display()
+
+    ###### If we wanted to optimize the pressures at each stage for lowest energy ######
+    # Unfix RO pump outlet pressures
+    # for i in m.fs.trains:
+    #     for j in m.fs.train[i].stages:
+    #         m.fs.train[i].stage[j].pump.unit.control_volume.properties_out[0].pressure.unfix()
+    
+    # for t in m.fs.tsro_trains:
+    #     m.fs.tsro_train[t].pump.unit.control_volume.properties_out[0].pressure.unfix()
+    
+    # # Fix overall system recovery
+    # m.fs.system_recovery.fix()
+    
+    # # Add objective to minimize total pump power
+    # m.fs.objective = Objective(expr=m.fs.total_system_pump_power)
+
+    # solver = get_solver()
+    # results = solver.solve(m)
+    # assert_optimal_termination(results)
