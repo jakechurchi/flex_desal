@@ -379,9 +379,9 @@ def main(
 
 
 if __name__ == "__main__":
-    m = main(Qin=2300, Pin=35 * pyunits.psi, add_costing=False)
+    m = main(Qin=2500, Pin=35 * pyunits.psi, add_costing=False)
     # Try with unfixed pump outlet pressures but fixed overall recovery
-    m.fs.ro_train.recovery_vol.fix(0.92)
+    # m.fs.ro_train.recovery_vol.fix(0.85)
     m.fs.ro_train.stage[1].pump.unit.control_volume.properties_out[0].pressure.unfix()
     m.fs.ro_train.stage[2].pump.unit.control_volume.properties_out[0].pressure.unfix()
     # # Add a constraint so that the recovery is the same for both stages
@@ -389,9 +389,9 @@ if __name__ == "__main__":
     #     expr=m.fs.ro_train.stage[1].ro.unit.recovery_vol_phase[0, "Liq"]
     #     == m.fs.ro_train.stage[2].ro.unit.recovery_vol_phase[0, "Liq"]
     # )
-    # m.fs.ro_train.stage[2].ro.unit.recovery_vol_phase[0, "Liq"].fix(.62)
-    # m.fs.ro_train.stage[1].ro.unit.recovery_vol_phase[0, "Liq"].fix(.61)
-    m.fs.objective = Objective(expr=m.fs.ro_train.total_pump_power)
+    m.fs.ro_train.stage[2].ro.unit.recovery_vol_phase[0, "Liq"].fix(0.62)
+    m.fs.ro_train.stage[1].ro.unit.recovery_vol_phase[0, "Liq"].fix(0.61)
+    # m.fs.objective = Objective(expr=m.fs.ro_train.total_pump_power)
 
     results = solver.solve(m, tee=True)
     assert_optimal_termination(results)
