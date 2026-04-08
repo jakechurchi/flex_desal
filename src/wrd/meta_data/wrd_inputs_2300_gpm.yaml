@@ -1,4 +1,4 @@
-# Feed stream and all inputs will have to be back calculated from an ro train feed flowrate of 2800 gpm
+# Feed stream and all inputs will have to be back calculated from an ro train feed flowrate of 2300 gpm
 feed_stream:
   feed_flow_water: 
     value: 9583.3
@@ -25,8 +25,16 @@ uf_pumps:
     pump_outlet_pressure:  
       # Assuming all pump have the same pressure
       # Value is plant data 50 psi + a bit to make power and speed values match better
-      value: 53
+      value: 50
       units: psi 
+
+headers:
+  pro_header_loss:
+    value: -14.6
+    units: psi
+  tsro_header_loss:
+    value: -41.9
+    units: psi
 
 # RO pump pressure for Train 1 data on 8/19/21.  
 ro_pumps:
@@ -66,7 +74,7 @@ ro_pumps:
       value: 112.6
       units: psi
     pump_outlet_pressure: 
-      value: 118
+      value: 163 # 118 ???
       units: psi
 
 # A and B coefficients for the RO system updated for each stage.
@@ -133,14 +141,6 @@ reverse_osmosis_1d:
     pressure_drop: 
       value: -7
       units: psi
-
-headers:
-  pro_header_loss:
-    value: -24.6
-    units: psi
-  tsro_header_loss:
-    value: -41.9
-    units: psi
 
 # Chemical addition data for 8/19/21
 chemical_addition:

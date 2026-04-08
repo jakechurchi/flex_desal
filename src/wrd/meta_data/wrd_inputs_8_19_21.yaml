@@ -137,7 +137,7 @@ reverse_osmosis_1d:
 
 headers:
   pro_header_loss:
-    value: -24.6
+    value: -14.6
     units: psi
   tsro_header_loss:
     value: -41.9

@@ -28,6 +28,14 @@ uf_pumps:
       value: 50
       units: psi 
 
+headers:
+  pro_header_loss:
+    value: -14.6
+    units: psi
+  tsro_header_loss:
+    value: -41.9
+    units: psi
+
 # RO pump pressure for Train 1 data on 8/19/21.  
 ro_pumps:
   pump_stage_1:
@@ -66,7 +74,7 @@ ro_pumps:
       value: 112.6
       units: psi
     pump_outlet_pressure: 
-      value: 143
+      value: 147
       units: psi
 
 # A and B coefficients for the RO system updated for each stage.
@@ -134,13 +142,7 @@ reverse_osmosis_1d:
       value: -7
       units: psi
 
-headers:
-  pro_header_loss:
-    value: -24.6
-    units: psi
-  tsro_header_loss:
-    value: -41.9
-    units: psi
+
 
 # Chemical addition data for 8/19/21
 chemical_addition:

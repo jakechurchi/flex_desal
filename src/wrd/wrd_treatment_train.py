@@ -837,11 +837,11 @@ def main(
 
 if __name__ == "__main__":
     num_uf_pump = 3
-    uf_split_fraction = [0.36, 0.36, 0.28]
+    uf_split_fraction = [0.395, 0.395, 0.21] # Could move these values into yaml tbh
     num_pro_trains = 4
     num_tsro_trains = 4
     tsro_split_fraction = None
-    file = "wrd_inputs_8_19_21.yaml"
+    file = "wrd_inputs_2300_gpm.yaml"
 
     m = main(
         num_uf_pump=num_uf_pump,
