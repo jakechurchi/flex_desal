@@ -339,16 +339,23 @@ def main(
 
 if __name__ == "__main__":
     # August 19, 2021 Data
-    # # Stage 1
-    # m = main()
+    # Stage 1
+    for pin in [14.5, 35.4]: #[10, 15, 20, 25, 30,35, 40]: 
+        m = main(Pin=pin * pyunits.psi, stage_num=1, file="wrd_inputs_8_19_21.yaml")
+
+    # m.fs.pump.unit.control_volume.properties_out[0].pressure.unfix()
+    # m.fs.pump.unit.design_speed_fraction.fix(.99)
+    # results = solver.solve(m)
+    # report_pump(m.fs.pump, add_costing=True)
+    
     # # Stage 2
     # m = main(Qin=1029, Pin=125 * pyunits.psi, stage_num=2)
     # # Stage 3
     # m = main(Qin=384, Pin=(112.6 - 41.9) * pyunits.psi, stage_num=3)
     # UF pump
-    m = main(
-        Qin= 2500, # This number is just a guess, actual flowrate calculated from model
-        Pin= -12 * pyunits.psi,
-        stage_num= 1,
-        uf= True,
-    )
+    # m = main(
+    #     Qin= 2500, # This number is just a guess, actual flowrate calculated from model
+    #     Pin= -12 * pyunits.psi,
+    #     stage_num= 1,
+    #     uf= True,
+    # )

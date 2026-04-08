@@ -376,11 +376,11 @@ if __name__ == "__main__":
     m = main(
         num_trains=3,
         split_fraction=[
-            0.39,
-            0.39,
-            0.22,
+            0.395,
+            0.395,
+            0.21,
         ],  # Don't actually know what the split fraction is!
-        Qin=10654,
+        Qin=10430,
         Cin=0.5,
         Pin=-12 * pyunits.psi,
         file="wrd_inputs_8_19_21.yaml",

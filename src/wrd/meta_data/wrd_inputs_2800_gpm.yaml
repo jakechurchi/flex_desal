@@ -25,7 +25,7 @@ uf_pumps:
     pump_outlet_pressure:  
       # Assuming all pump have the same pressure
       # Value is plant data 50 psi + a bit to make power and speed values match better
-      value: 53
+      value: 50
       units: psi 
 
 # RO pump pressure for Train 1 data on 8/19/21.  
