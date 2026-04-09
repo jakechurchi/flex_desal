@@ -1,8 +1,5 @@
 from pyomo.environ import (
     ConcreteModel,
-    Var,
-    Param,
-    Constraint,
     Reals,
     TransformationFactory,
     assert_optimal_termination,
@@ -12,6 +9,7 @@ from pyomo.environ import (
 from idaes.core.util.model_statistics import degrees_of_freedom
 from pyomo.network import Arc
 
+from idaes.core.util.constants import Constants
 from idaes.core import FlowsheetBlock, UnitModelCostingBlock
 from idaes.core.util.initialization import propagate_state
 from idaes.models.unit_models import StateJunction, Feed, Product
@@ -20,7 +18,6 @@ from idaes.core.util.scaling import calculate_scaling_factors, set_scaling_facto
 
 from watertap.costing import WaterTAPCosting
 from watertap.property_models.NaCl_T_dep_prop_pack import NaClParameterBlock
-from watertap.property_models.seawater_prop_pack import SeawaterParameterBlock
 from watertap.core.solvers import get_solver
 
 from wrd.utilities import load_config, get_config_value, get_config_file
@@ -121,7 +118,7 @@ def build_pump(
             #     doc="Fraction of design speed for UF pumps. This is an input used after the initial solve",
             # )
             geometric_head = pyunits.convert(
-                12 * pyunits.psi / (density * 9.81 * pyunits.m / pyunits.s**2),
+                12 * pyunits.psi / (density * Constants.acceleration_gravity),
                 to_units=pyunits.m,
             )
 
@@ -129,7 +126,7 @@ def build_pump(
             head_surrogate_coeffs = {0: 114.22, 1: -410.6, 2: 2729.2, 3: -8089.1}
             efficiency_surrogate_coeffs = {0: 0.389, 1: -0.535, 2: 41.373, 3: -138.82}
             geometric_head = pyunits.convert(
-                0 * pyunits.psi / (density * 9.81 * pyunits.m / pyunits.s**2),
+                0 * pyunits.psi / (density * Constants.acceleration_gravity),
                 to_units=pyunits.m,
             )
 
@@ -138,7 +135,7 @@ def build_pump(
             head_surrogate_coeffs = {0: 30.51, 1: -41.90, 2: 1015.7, 3: -23998.64}
             efficiency_surrogate_coeffs = {0: 0.071, 1: 20.72, 2: -124.82, 3: -280.32}
             geometric_head = pyunits.convert(
-                0 * pyunits.psi / (density * 9.81 * pyunits.m / pyunits.s**2),
+                0 * pyunits.psi / (density * Constants.acceleration_gravity),
                 to_units=pyunits.m,
             )
 
@@ -155,19 +152,6 @@ def build_pump(
         blk.unit.system_curve_geometric_head.fix(geometric_head)
 
     blk.product = StateJunction(property_package=prop_package)
-
-    # Create parameter for additional efficiency losses
-    # REMOVING THIS FOR TIME BEING BECAUSE IT'S NOT BEING USED. MIGHT INTERFERE WITH HOW THE EFFICIENCY IS CALCED IN DETAILED PUMP MODEL
-    # blk.unit.efficiency_loss = Param(
-    #     initialize=0,
-    #     mutable=True,
-    #     units=pyunits.dimensionless,
-    #     doc="Loss factor due to heat, age, wear, etc.",
-    # )
-    # blk.unit.eq_efficiency_electrical = Constraint(
-    #     expr=blk.unit.efficiency_pump[0]
-    #     == blk.unit.efficiency_mechanical[0] - blk.unit.efficiency_loss
-    # )
 
     # Add Arcs
     blk.feed_to_unit = Arc(source=blk.feed.outlet, destination=blk.unit.inlet)
@@ -274,7 +258,6 @@ def report_pump(blk, w=30, add_costing=False):
     print(
         f'{f"Inlet Flow":<{w}s}{value(pyunits.convert(flow_in, to_units=pyunits.gallons /pyunits.minute)):<{w}.3f}{"gpm"}'
     )
-    # print(f'{f"∆P (Pa)":<{w}s}{value(deltaP):<{w}.3e}{"Pa"}')
     print(
         f'{f"Inlet Pressure":<{w}s}{value(pyunits.convert(pin, to_units=pyunits.psi)):<{w}.3f}{"psi"}'
     )
@@ -358,8 +341,10 @@ if __name__ == "__main__":
 
     # # Stage 2
     # m = main(Qin=1029, Pin=125 * pyunits.psi, stage_num=2)
+
     # # Stage 3
     # m = main(Qin=384, Pin=(112.6 - 41.9) * pyunits.psi, stage_num=3)
+
     # UF pump
     # m = main(
     #     Qin= 2500, # This number is just a guess, actual flowrate calculated from model

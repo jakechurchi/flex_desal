@@ -7,9 +7,7 @@ from pyomo.environ import (
     Param,
     Set,
     check_optimal_termination,
-    value,
     units as pyunits,
-    Reals,
 )
 from pyomo.common.config import ConfigValue, In
 
