@@ -8,7 +8,6 @@ from pyomo.environ import (
     Reals,
     Objective,
 )
-from pyomo.util.infeasible import find_infeasible_bounds
 
 from idaes.core.util.initialization import propagate_state
 from idaes.core.util.model_statistics import degrees_of_freedom
@@ -466,7 +465,6 @@ def initialize_wrd_system(m):
     propagate_state(m.fs.uf_system_to_pro_header)
     m.fs.pro_header.initialize()
 
-    infeasible_bounds = list(find_infeasible_bounds(m))
     propagate_state(m.fs.pro_header_to_pro)
     initialize_ro_system(m)
 
@@ -839,7 +837,6 @@ def main(
 
 if __name__ == "__main__":
     num_uf_pump = 3
-    uf_split_fraction = [0.395, 0.395, 0.21]  # Could move these values into yaml tbh
     num_pro_trains = 4
     num_tsro_trains = 4
     tsro_split_fraction = None
@@ -847,7 +844,6 @@ if __name__ == "__main__":
 
     m = main(
         num_uf_pump=num_uf_pump,
-        uf_split_fraction=uf_split_fraction,
         num_pro_trains=num_pro_trains,
         num_tsro_trains=num_tsro_trains,
         tsro_split_fraction=tsro_split_fraction,

@@ -21,11 +21,19 @@ feed_stream:
     units: psi 
 
 uf_pumps:
-  number_trains: 1 # This number is uf_pumps now
+  split_fractions:
+    train_1:
+      value: 0.395
+      units: dimensionless
+    train_2:
+      value: 0.395
+      units: dimensionless
+    train_3:
+      value: 0.21
+      units: dimensionless
   pump:
     pump_outlet_pressure:  
       # Assuming all pump have the same pressure
-      # Value is plant data 50 psi + a bit to make power and speed values match better
       value: 50
       units: psi 
 

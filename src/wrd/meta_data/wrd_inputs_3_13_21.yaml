@@ -18,6 +18,32 @@ feed_stream:
   feed_pressure: 
     value: 14.5
     units: psi 
+uf_pumps:
+  split_fractions:
+    train_1:
+      value: 0.395
+      units: dimensionless
+    train_2:
+      value: 0.395
+      units: dimensionless
+    train_3:
+      value: 0.21
+      units: dimensionless
+  pump:
+    pump_outlet_pressure:  
+      # This value is based on the value observed on SCADA during a site visit. 
+      # To be updated with actual UF pump pressure when available.
+      # Assuming all pump have the same pressure
+      value: 50  
+      units: psi 
+
+headers:
+  pro_header_loss:
+    value: -14.6
+    units: psi
+  tsro_header_loss:
+    value: -59.3
+    units: psi
 
 # RO pump pressure for Train 1 data on 3/13/21.  
 ro_pumps:
@@ -125,23 +151,6 @@ reverse_osmosis_1d:
       value: -7.7
       units: psi
     
-headers:
-  pro_header_loss:
-    value: -24.6
-    units: psi
-  tsro_header_loss:
-    value: -59.3
-    units: psi
-  
-uf_pumps:
-  number_trains: 1 # This number is distinct from the number of RO trains, but they should match for testing
-  pump:
-    pump_outlet_pressure:  
-      # This value is based on the value observed on SCADA during a site visit. 
-      # To be updated with actual UF pump pressure when available.
-      # Assuming all pump have the same pressure
-      value: 60  
-      units: psi 
 
 # Chemical addition data for 3/13/21
 chemical_addition:

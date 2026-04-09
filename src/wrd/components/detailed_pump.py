@@ -92,7 +92,7 @@ def build_pump(
 
     blk.config_data = load_config(get_config_file(file))
     blk.stage_num = stage_num
-
+    blk.uf = uf
     blk.feed = StateJunction(property_package=prop_package)
     touch_flow_and_conc(blk.feed)
     density = 1000 * pyunits.kg / pyunits.m**3
@@ -107,16 +107,10 @@ def build_pump(
         blk.unit.efficiency_pump.fix(0.50)
 
     else:
-        if uf == True:
+        if blk.uf == True:
             # Checked these are correct from data in src/models/tests
             head_surrogate_coeffs = {0: 98.74, 1: -123.07, 2: 442.0, 3: -1920.0}
             efficiency_surrogate_coeffs = {0: 0.0677, 1: 5.357, 2: -4.475, 3: -19.578}
-            # blk.uf_speed_fraction = Param(
-            #     initialize=uf_pump_speed,
-            #     domain=Reals,
-            #     mutable=True,
-            #     doc="Fraction of design speed for UF pumps. This is an input used after the initial solve",
-            # )
             geometric_head = pyunits.convert(
                 12 * pyunits.psi / (density * Constants.acceleration_gravity),
                 to_units=pyunits.m,
@@ -146,8 +140,6 @@ def build_pump(
             head_surrogate_coeffs=head_surrogate_coeffs,
             efficiency_surrogate_coeffs=efficiency_surrogate_coeffs,
         )
-
-        # Default, but for tests with UF, the geometric head should be non zero!
         blk.unit.ref_speed_fraction.fix(1.0)
         blk.unit.system_curve_geometric_head.fix(geometric_head)
 
@@ -160,8 +152,8 @@ def build_pump(
     TransformationFactory("network.expand_arcs").apply_to(blk)
 
 
-def set_pump_op_conditions(blk, uf=False):
-    if uf:
+def set_pump_op_conditions(blk):
+    if blk.uf:
         # All the pumps are assumed to have the same outlet pressure for UF pumps because they collect in a header
         Pout = get_config_value(
             blk.config_data, "pump_outlet_pressure", "uf_pumps", f"pump"
@@ -196,8 +188,8 @@ def add_pump_scaling(blk):
     set_scaling_factor(blk.unit.work_mechanical[0], 1e-3)
 
 
-def initialize_system(m, uf=False):
-    if uf:
+def initialize_system(m):
+    if m.fs.pump.uf:
         # Allow negative suction pressure for UF configuration
         m.fs.feed.properties[0].pressure.setlb(None)
         m.fs.feed.properties[0].pressure.domain = Reals
@@ -300,7 +292,7 @@ def main(
     add_pump_scaling(m.fs.pump)
     calculate_scaling_factors(m)
     set_inlet_conditions(m, Qin=Qin, Cin=Cin, Tin=Tin, Pin=Pin)
-    set_pump_op_conditions(m.fs.pump, uf=uf)
+    set_pump_op_conditions(m.fs.pump)
 
     if add_costing:
         add_pump_costing(m.fs.pump)
@@ -311,7 +303,7 @@ def main(
             name="SEC",
         )
 
-    initialize_system(m, uf=uf)
+    initialize_system(m)
     assert degrees_of_freedom(m) == 0
     results = solver.solve(m)
     try:
@@ -331,8 +323,8 @@ def main(
 if __name__ == "__main__":
     # August 19, 2021 Data
     # Stage 1
-    for pin in [14.5, 35.4]:  # [10, 15, 20, 25, 30,35, 40]:
-        m = main(Pin=pin * pyunits.psi, stage_num=1, file="wrd_inputs_8_19_21.yaml")
+    # for pin in [14.5, 35.4]:  # [10, 15, 20, 25, 30,35, 40]:
+    #     m = main(Pin=pin * pyunits.psi, stage_num=1, file="wrd_inputs_8_19_21.yaml")
 
     # m.fs.pump.unit.control_volume.properties_out[0].pressure.unfix()
     # m.fs.pump.unit.design_speed_fraction.fix(.99)
@@ -346,9 +338,9 @@ if __name__ == "__main__":
     # m = main(Qin=384, Pin=(112.6 - 41.9) * pyunits.psi, stage_num=3)
 
     # UF pump
-    # m = main(
-    #     Qin= 2500, # This number is just a guess, actual flowrate calculated from model
-    #     Pin= -12 * pyunits.psi,
-    #     stage_num= 1,
-    #     uf= True,
-    # )
+    m = main(
+        Qin=2500,  # This number is just a guess, actual flowrate calculated from model
+        Pin=-12 * pyunits.psi,
+        stage_num=1,
+        uf=True,
+    )

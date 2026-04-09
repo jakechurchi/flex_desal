@@ -189,7 +189,7 @@ def initialize_system(blk):
 
 
 def initialize_chem_addition(blk):
-    # Easier to change these bounds than to redefine the pressure as negative later in the treatment train.
+
     blk.feed.properties[0].pressure.setlb(None)
     blk.feed.properties[0].pressure.domain = Reals
     blk.feed.initialize()
