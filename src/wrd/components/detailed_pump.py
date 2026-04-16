@@ -276,7 +276,6 @@ def report_pump(blk, w=30, add_costing=False):
             f'{f"Speed Ratio (-)":<{w}s}{value(blk.unit.design_speed_fraction):<{w}.3f}{"-"}'
         )
 
-
     if add_costing:
         m = blk.model()
         # Is SEC not appearing on m.fs.costing.display a known issue?
@@ -342,7 +341,6 @@ if __name__ == "__main__":
     #     results = solver.solve(m)
     #     assert_optimal_termination(results)
     #     report_pump(m.fs.pump, add_costing=True)
-        
 
     # # Stage 2
     # m = main(Qin=1029, Pin=125 * pyunits.psi, stage_num=2)
@@ -358,7 +356,7 @@ if __name__ == "__main__":
         stage_num=1,
         uf=True,
     )
-    
+
     # m.fs.pump.unit.control_volume.properties_out[0].pressure.unfix()
     # m.fs.pump.unit.design_speed_fraction.fix(.91)
     # m.fs.pump.unit.system_curve_geometric_head.fix(3.5)
