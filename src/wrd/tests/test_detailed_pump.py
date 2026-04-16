@@ -39,17 +39,31 @@ def test_stage_3_pump():
 
 
 @pytest.mark.unit
-def test_uf_pump():
-    # Currently a head and speed input, but should change to flow and head (or flow and speed)
+def test_uf_pump_full_speed():
     m = main(
-        Qin=3300,  # This number is just a guess, actual flowrate calculated from model
-        Pin=-12 * pyunits.psi,
+        Qin=4208,  # This number is just a guess, actual flowrate calculated from model
+        Pin=1e-8 * pyunits.psi,
         stage_num=1,
         uf=True,
     )
 
-    assert pytest.approx(m.fs.pump.unit.work_mechanical[0].value, rel=1e-3) == 118535
-    assert pytest.approx(m.fs.pump.unit.design_speed_fraction.value, rel=1e-3) == 0.804
+    assert pytest.approx(m.fs.pump.unit.work_mechanical[0].value, rel=1e-3) == 162455
+    assert pytest.approx(m.fs.pump.unit.design_speed_fraction.value, rel=1e-3) == 0.9019
+
+
+@pytest.mark.unit
+def test_uf_pump_low_speed():
+    m = main(
+        Qin=2237,  # This number is just a guess, actual flowrate calculated from model
+        Pin=1e-8 * pyunits.psi,
+        stage_num=1,
+        uf=True,
+    )
+
+    assert pytest.approx(m.fs.pump.unit.work_mechanical[0].value, rel=1e-3) == 81843
+    assert (
+        pytest.approx(m.fs.pump.unit.design_speed_fraction.value, rel=1e-3) == 0.71745
+    )
 
 
 # This is outdated, but would be nice to catch if the user provides flowrate / head outside the bounds of validity for their surrogate

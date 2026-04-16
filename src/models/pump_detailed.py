@@ -439,8 +439,10 @@ class PumpIsothermalData(InitializationMixin, PumpData):
             # Replace equation calculating the pump work to add the geometric head (potential energy change) term to the mechanical work
             self.del_component(self.actual_work)
 
-            @self.Constraint(self.flowsheet().time, doc="Mechanical work including geometric head")
-            def actual_work(b,t):
+            @self.Constraint(
+                self.flowsheet().time, doc="Mechanical work including geometric head"
+            )
+            def actual_work(b, t):
                 return (
                     b.work_mechanical[t]
                     == (
@@ -451,8 +453,7 @@ class PumpIsothermalData(InitializationMixin, PumpData):
                     )
                     / self.efficiency_pump[0]
                 )
-            
-            
+
     def initialize_build(
         self,
         state_args=None,
