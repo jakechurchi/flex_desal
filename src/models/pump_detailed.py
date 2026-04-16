@@ -435,6 +435,24 @@ class PumpIsothermalData(InitializationMixin, PumpData):
             # User should directly fix efficiency_pump[0] and deltaP
             pass
 
+        if hasattr(self, "system_curve_geometric_head"):
+            # Replace equation calculating the pump work to add the geometric head (potential energy change) term to the mechanical work
+            self.del_component(self.actual_work)
+
+            @self.Constraint(self.flowsheet().time, doc="Mechanical work including geometric head")
+            def actual_work(b,t):
+                return (
+                    b.work_mechanical[t]
+                    == (
+                        (b.design_head)
+                        * b.control_volume.properties_in[t].dens_mass_phase["Liq"]
+                        * Constants.acceleration_gravity
+                        * b.control_volume.properties_in[t].flow_vol_phase["Liq"]
+                    )
+                    / self.efficiency_pump[0]
+                )
+            
+            
     def initialize_build(
         self,
         state_args=None,
@@ -468,39 +486,6 @@ class PumpIsothermalData(InitializationMixin, PumpData):
         )
 
         init_log.info_high("Initialization Step 1 Complete.")
-
-        if hasattr(self, "system_curve_geometric_head"):
-            # self.control_volume.del_component(self.control_volume.pressure_balance)
-
-            # # Then add our own pressure balance
-            # @self.control_volume.Constraint(
-            #     doc="Pressure balance including geometric head"
-            # )
-            # def pressure_balance(b):
-            #     return (
-            #         b.deltaP[0]
-            #         == b.properties_out[0].pressure
-            #         - b.properties_in[0].pressure
-            #         - self.system_curve_geometric_head
-            #         * b.properties_in[0].dens_mass_phase["Liq"]
-            #         * Constants.acceleration_gravity
-            #     )
-
-            # Then have to add this term to the mechanical work calculation
-            self.del_component(self.actual_work)
-
-            @self.Constraint(doc="Mechanical work including geometric head")
-            def actual_work(b):
-                return (
-                    b.work_mechanical[0]
-                    == (
-                        (b.design_head)
-                        * b.control_volume.properties_in[0].dens_mass_phase["Liq"]
-                        * Constants.acceleration_gravity
-                        * b.control_volume.properties_in[0].flow_vol_phase["Liq"]
-                    )
-                    / self.efficiency_pump[0]
-                )
 
         with idaeslog.solver_log(solve_log, idaeslog.DEBUG) as slc:
             res = opt.solve(self, tee=slc.tee)
