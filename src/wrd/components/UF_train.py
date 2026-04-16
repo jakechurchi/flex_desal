@@ -294,4 +294,4 @@ def main(
 
 
 if __name__ == "__main__":
-    m = main(Pin=-12 * pyunits.psi, Qin=0.25 * 10654)
+    m = main(Pin=-12 * pyunits.psi, Qin=0.395 * 10654)

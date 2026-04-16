@@ -42,7 +42,7 @@ def test_uf_pump_8_19_full_speed():
         0.21 * pyunits.m**3 / pyunits.s
     )  # Actual flow vol will be calculated in second solve
     density = 1000 * pyunits.kg / pyunits.m**3
-    feed_pressure_in = -12 * pyunits.psi  # 101325 * pyunits.Pa
+    feed_pressure_in = 101325 * pyunits.Pa
 
     m.fs.unit.control_volume.properties_in[0].pressure.setlb(None)
     m.fs.unit.control_volume.properties_in[0].pressure.domain = Reals

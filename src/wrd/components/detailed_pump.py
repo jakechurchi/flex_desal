@@ -253,6 +253,10 @@ def report_pump(blk, w=30, add_costing=False):
     print(
         f'{f"Inlet Pressure":<{w}s}{value(pyunits.convert(pin, to_units=pyunits.psi)):<{w}.3f}{"psi"}'
     )
+    if hasattr(blk.unit, "system_curve_geometric_head"):
+        print(
+            f'{f"Evavation Change (m)":<{w}s}{value(blk.unit.system_curve_geometric_head):<{w}.3f}{"-"}'
+        )
     print(
         f'{f"∆P":<{w}s}{value(pyunits.convert(deltaP, to_units=pyunits.psi)):<{w}.3f}{"psi"}'
     )
@@ -339,8 +343,8 @@ if __name__ == "__main__":
 
     # UF pump
     m = main(
-        Qin=2500,  # This number is just a guess, actual flowrate calculated from model
-        Pin=-12 * pyunits.psi,
+        Qin=3955,  
+        Pin= -12 * pyunits.psi,
         stage_num=1,
         uf=True,
     )

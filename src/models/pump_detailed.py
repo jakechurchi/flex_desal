@@ -174,6 +174,11 @@ class PumpIsothermalData(InitializationMixin, PumpData):
         )
         def isothermal_balance(b, t):
             return b.properties_in[t].temperature == b.properties_out[t].temperature
+# Replace the DeltaP equation from the base pump model with one which includes geometric head
+                    # design_head = system_curve_geometric_head +  system_curve_flow_constant * (design_flow)**2      
+        
+
+    
 
         if self.config.variable_efficiency is not Efficiency.Fixed:
             # Variable efficiency pump set-up
@@ -213,8 +218,6 @@ class PumpIsothermalData(InitializationMixin, PumpData):
             )
 
             ### System curve variables ###
-            # design_head = system_curve_geometric_head +  system_curve_flow_constant * (design_flow)**2
-
             self.system_curve_geometric_head = Var(
                 initialize=0.0,
                 bounds=(0, 10000),
@@ -230,14 +233,14 @@ class PumpIsothermalData(InitializationMixin, PumpData):
             )
 
             # Constraints connecting inlet and outlet conditions to the design point head and flow, used to solve for the system curve constants
+            # This is now incorrect because the head includes the geometric head, not just deltaP!
             @self.Constraint(
                 doc="Design head is the pressure difference across the pump at the design point"
             )
             def design_head_constraint(b):
-                return b.design_head == b.control_volume.deltaP[0] / (
+                return b.design_head == b.system_curve_geometric_head + b.control_volume.deltaP[0] / (
                     b.control_volume.properties_out[0].dens_mass_phase["Liq"]
-                    * Constants.acceleration_gravity
-                )
+                    * Constants.acceleration_gravity)
 
             @self.Constraint(
                 doc="Design flow is the flow through the pump at the design point"
@@ -461,6 +464,14 @@ class PumpIsothermalData(InitializationMixin, PumpData):
         )
 
         init_log.info_high("Initialization Step 1 Complete.")
+
+        if hasattr(self, "system_curve_geometric_head"):
+            self.control_volume.del_component(self.control_volume.pressure_balance)
+            # Then add our own pressure balance
+            @self.control_volume.Constraint(doc="Pressure balance including geometric head")
+            def pressure_balance(b):
+                return (b.properties_out[0].pressure - b.properties_in[0].pressure 
+                        - b.deltaP[0] == self.system_curve_geometric_head * b.properties_in[0].dens_mass_phase['Liq'] * Constants.acceleration_gravity)
 
         with idaeslog.solver_log(solve_log, idaeslog.DEBUG) as slc:
             res = opt.solve(self, tee=slc.tee)
