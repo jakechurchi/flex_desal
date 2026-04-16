@@ -493,11 +493,12 @@ class PumpIsothermalData(InitializationMixin, PumpData):
             def actual_work(b):
                 return (
                     b.work_mechanical[0]
-                    == ((b.design_head) 
+                    == (
+                        (b.design_head)
                         * b.control_volume.properties_in[0].dens_mass_phase["Liq"]
                         * Constants.acceleration_gravity
                         * b.control_volume.properties_in[0].flow_vol_phase["Liq"]
-                )
+                    )
                     / self.efficiency_pump[0]
                 )
 
@@ -510,23 +511,7 @@ class PumpIsothermalData(InitializationMixin, PumpData):
         init_log.info("Initialization Complete: {}".format(idaeslog.condition(res)))
 
         if not check_optimal_termination(res):
-            # It's possible initialization fails if the initial flowrate
-            # if m.fs.unit.design_speed_fraction.fixed and m.fs.unit.design_head.fixed:
-            #     design_speed = m.fs.unit.design_speed_fraction.value
-            #     m.fs.unit.design_speed_fraction.unfix()
-            #     m.fs.unit.inlet.flow_mass_phase_comp[0, "Liq", "H2O"].fix(m.fs.unit.inlet.flow_mass_phase_comp[0, "Liq", "H2O"].value * .75)
-            #     m.fs.unit.inlet.flow_mass_phase_comp[0, "Liq", "TDS"].fix(m.fs.unit.inlet.flow_mass_phase_comp[0, "Liq", "TDS"].value * .75)
-            #     m.fs.unit.control_volume.properties_in[0].mass_frac_phase_comp["Liq", "TDS"].unfix() # This should remain fixed the whole time, but unfixing b/c it might cause property model to fail.
-            #     with idaeslog.solver_log(solve_log, idaeslog.DEBUG) as slc:
-            #         res = opt.solve(self, tee=slc.tee)
-            #     # Then refix speed, try again
-            #     m.fs.unit.design_speed_fraction.fix(design_speed)
-            #     m.fs.unit.inlet.flow_mass_phase_comp[0, "Liq", "H2O"].unfix()
-            #     with idaeslog.solver_log(solve_log, idaeslog.DEBUG) as slc:
-            #         res = opt.solve(self, tee=slc.tee)
-            #     if not check_optimal_termination(res):
-            #         raise InitializationError(f"Unit model {self.name} failed to initialize")
-            # else:
+            # There could be additional initialization steps to try and find where
             raise InitializationError(f"Unit model {self.name} failed to initialize")
 
     def calculate_scaling_factors(self):

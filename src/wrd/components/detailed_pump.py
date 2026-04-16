@@ -255,17 +255,17 @@ def report_pump(blk, w=30, add_costing=False):
     )
     if hasattr(blk.unit, "system_curve_geometric_head"):
         print(
-            f'{f"Evavation Change (m)":<{w}s}{value(blk.unit.system_curve_geometric_head):<{w}.3f}{"-"}'
+            f'{f"Evavation Change (m)":<{w}s}{value(blk.unit.system_curve_geometric_head):<{w}.3f}{"m"}'
         )
     print(
-        f'{f"∆P":<{w}s}{value(pyunits.convert(deltaP, to_units=pyunits.psi)):<{w}.3f}{"psi"}'
+        f'{f"∆P (psi)":<{w}s}{value(pyunits.convert(deltaP, to_units=pyunits.psi)):<{w}.3f}{"psi"}'
     )
     if hasattr(blk.unit, "design_head"):
         print(
-            f'{f"Design Head":<{w}s}{value(pyunits.convert(blk.unit.design_head, to_units=pyunits.m)):<{w}.3f}{"m"}'
+            f'{f"Design Head (m)":<{w}s}{value(pyunits.convert(blk.unit.design_head, to_units=pyunits.m)):<{w}.3f}{"m"}'
         )
     print(
-        f'{f"Outlet Pressure":<{w}s}{value(pyunits.convert(pout, to_units=pyunits.psi)):<{w}.3f}{"psi"}'
+        f'{f"Outlet Pressure (psi)":<{w}s}{value(pyunits.convert(pout, to_units=pyunits.psi)):<{w}.3f}{"psi"}'
     )
     print(
         f'{f"Work Mech. (kW)":<{w}s}{value(pyunits.convert(work, to_units=pyunits.kW)):<{w}.3f}{"kW"}'
@@ -324,7 +324,7 @@ def main(
                 + str(e),
             )
         raise
-    # report_pump(m.fs.pump, add_costing=add_costing)
+    report_pump(m.fs.pump, add_costing=add_costing)
 
     return m
 
@@ -332,15 +332,16 @@ def main(
 if __name__ == "__main__":
     # August 19, 2021 Data
     # Stage 1
-    for pin in [35.4]:  # [10, 15, 20, 25, 30,35, 40]:
-        m = main(Pin=pin * pyunits.psi, stage_num=1, file="wrd_inputs_8_19_21.yaml")
-        m.fs.pump.unit.system_curve_geometric_head.fix(10)
-        m.fs.pump.unit.design_speed_fraction.bounds = (0, 1.05)
-        # m.fs.pump.unit.control_volume.properties_out[0].pressure.unfix()
-        # m.fs.pump.unit.design_speed_fraction.fix(.99)
-        results = solver.solve(m)
-        assert_optimal_termination(results)
-        report_pump(m.fs.pump, add_costing=True)
+    # for pin in [35.4]:  # [10, 15, 20, 25, 30,35, 40]:
+    #     m = main(Pin=pin * pyunits.psi, stage_num=1, file="wrd_inputs_8_19_21.yaml")
+    # Just testing to see what happens with an elevation change
+    #     m.fs.pump.unit.system_curve_geometric_head.fix(10)
+    #     m.fs.pump.unit.design_speed_fraction.bounds = (0, 1.05)
+    #     # m.fs.pump.unit.control_volume.properties_out[0].pressure.unfix()
+    #     # m.fs.pump.unit.design_speed_fraction.fix(.99)
+    #     results = solver.solve(m)
+    #     assert_optimal_termination(results)
+    #     report_pump(m.fs.pump, add_costing=True)
         
 
     # # Stage 2
@@ -350,9 +351,17 @@ if __name__ == "__main__":
     # m = main(Qin=384, Pin=(112.6 - 41.9) * pyunits.psi, stage_num=3)
 
     # UF pump
-    # m = main(
-    #     Qin=3955,
-    #     Pin=-12 * pyunits.psi,
-    #     stage_num=1,
-    #     uf=True,
-    # )
+    # Now instead of a negative pressure due to the elevation change, the elevation change is already included and the inlet pressure is 1 atm (or for gage pressure = 0)
+    m = main(
+        Qin=4208,
+        Pin=1e-8 * pyunits.psi,
+        stage_num=1,
+        uf=True,
+    )
+    
+    # m.fs.pump.unit.control_volume.properties_out[0].pressure.unfix()
+    # m.fs.pump.unit.design_speed_fraction.fix(.91)
+    # m.fs.pump.unit.system_curve_geometric_head.fix(3.5)
+    # results = solver.solve(m)
+    # assert_optimal_termination(results)
+    # report_pump(m.fs.pump, add_costing=True)
