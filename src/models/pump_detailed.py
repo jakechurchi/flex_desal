@@ -174,11 +174,9 @@ class PumpIsothermalData(InitializationMixin, PumpData):
         )
         def isothermal_balance(b, t):
             return b.properties_in[t].temperature == b.properties_out[t].temperature
-# Replace the DeltaP equation from the base pump model with one which includes geometric head
-                    # design_head = system_curve_geometric_head +  system_curve_flow_constant * (design_flow)**2      
-        
 
-    
+        # Replace the DeltaP equation from the base pump model with one which includes geometric head
+        # design_head = system_curve_geometric_head +  system_curve_flow_constant * (design_flow)**2
 
         if self.config.variable_efficiency is not Efficiency.Fixed:
             # Variable efficiency pump set-up
@@ -238,9 +236,15 @@ class PumpIsothermalData(InitializationMixin, PumpData):
                 doc="Design head is the pressure difference across the pump at the design point"
             )
             def design_head_constraint(b):
-                return b.design_head == b.system_curve_geometric_head + b.control_volume.deltaP[0] / (
-                    b.control_volume.properties_out[0].dens_mass_phase["Liq"]
-                    * Constants.acceleration_gravity)
+                return (
+                    b.design_head
+                    == b.system_curve_geometric_head
+                    + b.control_volume.deltaP[0]
+                    / (
+                        b.control_volume.properties_out[0].dens_mass_phase["Liq"]
+                        * Constants.acceleration_gravity
+                    )
+                )
 
             @self.Constraint(
                 doc="Design flow is the flow through the pump at the design point"
@@ -467,20 +471,38 @@ class PumpIsothermalData(InitializationMixin, PumpData):
 
         if hasattr(self, "system_curve_geometric_head"):
             self.control_volume.del_component(self.control_volume.pressure_balance)
+
             # Then add our own pressure balance
-            @self.control_volume.Constraint(doc="Pressure balance including geometric head")
+            @self.control_volume.Constraint(
+                doc="Pressure balance including geometric head"
+            )
             def pressure_balance(b):
-                return (b.properties_out[0].pressure - b.properties_in[0].pressure 
-                        - b.deltaP[0] == self.system_curve_geometric_head * b.properties_in[0].dens_mass_phase['Liq'] * Constants.acceleration_gravity)
-            
+                return (
+                    b.properties_out[0].pressure
+                    - b.properties_in[0].pressure
+                    - b.deltaP[0]
+                    == self.system_curve_geometric_head
+                    * b.properties_in[0].dens_mass_phase["Liq"]
+                    * Constants.acceleration_gravity
+                )
+
             # Then have to add this term to the mechanical work calculation
             self.del_component(self.actual_work)
+
             @self.Constraint(doc="Mechanical work including geometric head")
             def actual_work(b):
-                return (b.work_mechanical[0] ==
-                    (b.control_volume.deltaP[0] * b.control_volume.properties_in[0].flow_vol_phase["Liq"]
-                    + self.system_curve_geometric_head * b.control_volume.properties_in[0].dens_mass_phase['Liq'] * Constants.acceleration_gravity * b.control_volume.properties_in[0].flow_vol_phase["Liq"]
-                ) / self.efficiency_pump[0] )
+                return (
+                    b.work_mechanical[0]
+                    == (
+                        b.control_volume.deltaP[0]
+                        * b.control_volume.properties_in[0].flow_vol_phase["Liq"]
+                        + self.system_curve_geometric_head
+                        * b.control_volume.properties_in[0].dens_mass_phase["Liq"]
+                        * Constants.acceleration_gravity
+                        * b.control_volume.properties_in[0].flow_vol_phase["Liq"]
+                    )
+                    / self.efficiency_pump[0]
+                )
 
         with idaeslog.solver_log(solve_log, idaeslog.DEBUG) as slc:
             res = opt.solve(self, tee=slc.tee)

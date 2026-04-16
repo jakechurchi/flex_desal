@@ -343,8 +343,8 @@ if __name__ == "__main__":
 
     # UF pump
     m = main(
-        Qin=3955,  
-        Pin= -12 * pyunits.psi,
+        Qin=3955,
+        Pin=-12 * pyunits.psi,
         stage_num=1,
         uf=True,
     )
