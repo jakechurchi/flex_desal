@@ -294,4 +294,5 @@ def main(
 
 
 if __name__ == "__main__":
-    m = main(Pin=-12 * pyunits.psi, Qin=0.395 * 10654)
+    # Where did we calculate the -12 psi? And actually why is it negative again?
+    m = main(Pin= -12 * pyunits.psi, Qin=0.395 * 10654)
