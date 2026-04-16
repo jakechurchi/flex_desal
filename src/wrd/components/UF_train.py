@@ -295,4 +295,6 @@ def main(
 
 if __name__ == "__main__":
     # Where did we calculate the -12 psi? And actually why is it negative again?
-    m = main(Pin=-12 * pyunits.psi, Qin=0.395 * 10654)
+    # m = main(Pin=-12 * pyunits.psi, Qin=0.395 * 10654)
+    m = main(Pin= 14.5 * pyunits.psi, Qin=0.395 * 10654)
+    # Fails to initialize when Pin = 0 ?

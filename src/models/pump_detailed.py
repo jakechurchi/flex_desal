@@ -231,7 +231,7 @@ class PumpIsothermalData(InitializationMixin, PumpData):
             )
 
             # Constraints connecting inlet and outlet conditions to the design point head and flow, used to solve for the system curve constants
-            # This is now incorrect because the head includes the geometric head, not just deltaP!
+            # The head should include geometric head, not just deltaP!
             @self.Constraint(
                 doc="Design head is the pressure difference across the pump at the design point"
             )
@@ -470,21 +470,21 @@ class PumpIsothermalData(InitializationMixin, PumpData):
         init_log.info_high("Initialization Step 1 Complete.")
 
         if hasattr(self, "system_curve_geometric_head"):
-            self.control_volume.del_component(self.control_volume.pressure_balance)
+            # self.control_volume.del_component(self.control_volume.pressure_balance)
 
-            # Then add our own pressure balance
-            @self.control_volume.Constraint(
-                doc="Pressure balance including geometric head"
-            )
-            def pressure_balance(b):
-                return (
-                    b.properties_out[0].pressure
-                    - b.properties_in[0].pressure
-                    - b.deltaP[0]
-                    == self.system_curve_geometric_head
-                    * b.properties_in[0].dens_mass_phase["Liq"]
-                    * Constants.acceleration_gravity
-                )
+            # # Then add our own pressure balance
+            # @self.control_volume.Constraint(
+            #     doc="Pressure balance including geometric head"
+            # )
+            # def pressure_balance(b):
+            #     return (
+            #         b.deltaP[0]
+            #         == b.properties_out[0].pressure
+            #         - b.properties_in[0].pressure
+            #         - self.system_curve_geometric_head
+            #         * b.properties_in[0].dens_mass_phase["Liq"]
+            #         * Constants.acceleration_gravity
+            #     )
 
             # Then have to add this term to the mechanical work calculation
             self.del_component(self.actual_work)
@@ -493,14 +493,11 @@ class PumpIsothermalData(InitializationMixin, PumpData):
             def actual_work(b):
                 return (
                     b.work_mechanical[0]
-                    == (
-                        b.control_volume.deltaP[0]
-                        * b.control_volume.properties_in[0].flow_vol_phase["Liq"]
-                        + self.system_curve_geometric_head
+                    == ((b.design_head) 
                         * b.control_volume.properties_in[0].dens_mass_phase["Liq"]
                         * Constants.acceleration_gravity
                         * b.control_volume.properties_in[0].flow_vol_phase["Liq"]
-                    )
+                )
                     / self.efficiency_pump[0]
                 )
 
