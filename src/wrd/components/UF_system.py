@@ -239,6 +239,14 @@ def set_uf_system_op_conditions(m):
 
 
 def initialize_uf_system(m):
+
+    if m.standalone:
+        m.fs.feed.properties[0].pressure.setlb(0)
+    m.fs.uf_feed_separator.mixed_state[0].pressure.setlb(0)
+    for i in m.fs.uf_trains:
+        outlet_state = m.fs.uf_feed_separator.find_component(f"uf{i}_state")
+        outlet_state[0].pressure.setlb(0)
+
     if m.standalone:
         m.fs.feed.initialize()
         propagate_state(m.fs.uf_feed_to_separator)

@@ -17,7 +17,7 @@ feed_stream:
     value: 302.2
     units: K
   feed_pressure: 
-    value: -12 # This is because the "inlet pressure" for the feed stream is at bottom of EQ tank.
+    value: 0.001 # Setting to 0 confuses solver
     units: psi 
 
 uf_pumps:

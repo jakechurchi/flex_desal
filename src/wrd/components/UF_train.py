@@ -189,6 +189,10 @@ def initialize_system(m):
 
 
 def initialize_uf_train(blk):
+    blk.feed.properties[0].pressure.setlb(0)
+    blk.pump.feed.properties[0].pressure.setlb(0)
+    blk.pump.unit.control_volume.properties_in[0].pressure.setlb(0)
+
     blk.feed.initialize()
 
     propagate_state(blk.feed_to_pump)

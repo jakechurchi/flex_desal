@@ -438,6 +438,7 @@ def set_wrd_system_scaling(m):
 
 
 def initialize_wrd_system(m):
+    m.fs.feed.properties[0].pressure.setlb(0)
     m.fs.feed.initialize()
 
     # Initialize pre-UF chemical chain

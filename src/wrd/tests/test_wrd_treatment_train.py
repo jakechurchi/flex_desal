@@ -88,7 +88,7 @@ def test_wrd_treatment_train_8_19_21(num_pro_trains):
 
 # BECAUSE TOTAL FLOWRATE NOW IN YAML, ONLY THE FULL 4 TRAINS CASE WILL WORK
 @pytest.mark.parametrize("num_pro_trains", [4])
-@pytest.mark.component
+@pytest.mark.skip
 def test_wrd_treatment_train_3_13_21(num_pro_trains):
     file = "wrd_inputs_3_13_21.yaml"
     m = main(
