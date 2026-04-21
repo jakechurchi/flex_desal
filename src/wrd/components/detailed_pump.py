@@ -359,7 +359,7 @@ if __name__ == "__main__":
 
     # m.fs.pump.unit.control_volume.properties_out[0].pressure.unfix()
     # m.fs.pump.unit.design_speed_fraction.fix(.91)
-    # m.fs.pump.unit.system_curve_geometric_head.fix(3.5)
-    # results = solver.solve(m)
-    # assert_optimal_termination(results)
-    # report_pump(m.fs.pump, add_costing=True)
+    m.fs.pump.unit.system_curve_geometric_head.fix(-3.5)
+    results = solver.solve(m)
+    assert_optimal_termination(results)
+    report_pump(m.fs.pump, add_costing=True)

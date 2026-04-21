@@ -399,6 +399,18 @@ def test_negative_inlet_pressure():
     ) == pytest.approx(165.68, rel=1e-3)
 
 
+@pytest.mark.component
+def test_negative_geometric_head():
+    m = build_pump_w_flow_head()
+    m.fs.unit.system_curve_geometric_head.fix(-10)
+
+    assert degrees_of_freedom(m) == 0
+    m.fs.unit.initialize()
+
+    results = solver.solve(m)
+    assert_optimal_termination(results)
+
+
 # Test an invalid surrogate coefficient case
 @pytest.mark.component
 def test_invalid_surrogate_coefficients():

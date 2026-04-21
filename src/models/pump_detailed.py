@@ -175,15 +175,12 @@ class PumpIsothermalData(InitializationMixin, PumpData):
         def isothermal_balance(b, t):
             return b.properties_in[t].temperature == b.properties_out[t].temperature
 
-        # Replace the DeltaP equation from the base pump model with one which includes geometric head
-        # design_head = system_curve_geometric_head +  system_curve_flow_constant * (design_flow)**2
-
         if self.config.variable_efficiency is not Efficiency.Fixed:
             # Variable efficiency pump set-up
             #### Design point variables ####
             self.design_flow = Var(
                 initialize=1.0,
-                bounds=(0, 10000),
+                bounds=(0, None),
                 doc="""Design flowrate of the centrifugal pump. 
                 This could be the flowrate at the best efficiency point (BEP) or user selected operating point.
                 Used to build the system curve.""",
@@ -192,7 +189,7 @@ class PumpIsothermalData(InitializationMixin, PumpData):
 
             self.design_head = Var(
                 initialize=1.0,
-                bounds=(0, 10000),
+                bounds=(0, None),
                 doc="""Design head of the centrifugal pump. 
                 This could be the head at the best efficiency point (BEP) or user selected operating point.
                 Used to build the system curve.""",
@@ -218,14 +215,14 @@ class PumpIsothermalData(InitializationMixin, PumpData):
             ### System curve variables ###
             self.system_curve_geometric_head = Var(
                 initialize=0.0,
-                bounds=(0, 10000),
+                bounds=(None, None),
                 doc="""Geometric head constant for the pump, that represents the static head component used to define the system curve.""",
                 units=pyunits.m,
             )
 
             self.system_curve_flow_constant = Var(
                 initialize=1.0,
-                bounds=(0, 10000),
+                bounds=(0, None),
                 doc="""Geometric flow constant for the pump, represents the major and minor losses in pump. Used to define the system curve.""",
                 units=pyunits.m * (pyunits.m**3 / pyunits.s) ** (-2),
             )
@@ -267,14 +264,14 @@ class PumpIsothermalData(InitializationMixin, PumpData):
             #### Pump curve variables ####
             self.ref_flow = Var(
                 initialize=1.0,
-                bounds=(0, 10000),
+                bounds=(0, None),
                 doc="Reference flowrate for the pump on the pump curve from specification sheet",
                 units=pyunits.m**3 / pyunits.s,
             )
 
             self.ref_head = Var(
                 initialize=10.0,
-                bounds=(0, 10000),
+                bounds=(0, None),
                 doc="Reference head for the pump on the pump curve from specification sheet.",
                 units=pyunits.m,
             )
