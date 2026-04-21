@@ -189,15 +189,6 @@ def initialize_system(m):
 
 
 def initialize_uf_train(blk):
-    # Allow negative suction pressure through every pressure variable in the
-    # inlet path: train feed junction → pump feed junction → pump CV inlet.
-    blk.feed.properties[0].pressure.setlb(None)
-    blk.feed.properties[0].pressure.domain = Reals
-    blk.pump.feed.properties[0].pressure.setlb(None)
-    blk.pump.feed.properties[0].pressure.domain = Reals
-    blk.pump.unit.control_volume.properties_in[0].pressure.setlb(None)
-    blk.pump.unit.control_volume.properties_in[0].pressure.domain = Reals
-
     blk.feed.initialize()
 
     propagate_state(blk.feed_to_pump)

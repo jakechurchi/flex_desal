@@ -239,19 +239,6 @@ def set_uf_system_op_conditions(m):
 
 
 def initialize_uf_system(m):
-    # Allow negative suction pressure through the system-level inlet path:
-    # top-level feed block, the separator inlet (mixed_state), and all
-    # separator outlet states which inherit the same pressure lower bound.
-    if m.standalone:
-        m.fs.feed.properties[0].pressure.setlb(None)
-        m.fs.feed.properties[0].pressure.domain = Reals
-    m.fs.uf_feed_separator.mixed_state[0].pressure.setlb(None)
-    m.fs.uf_feed_separator.mixed_state[0].pressure.domain = Reals
-    for i in m.fs.uf_trains:
-        outlet_state = m.fs.uf_feed_separator.find_component(f"uf{i}_state")
-        outlet_state[0].pressure.setlb(None)
-        outlet_state[0].pressure.domain = Reals
-
     if m.standalone:
         m.fs.feed.initialize()
         propagate_state(m.fs.uf_feed_to_separator)

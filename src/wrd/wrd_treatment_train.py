@@ -438,9 +438,6 @@ def set_wrd_system_scaling(m):
 
 
 def initialize_wrd_system(m):
-    # Allow negative feed pressure
-    m.fs.feed.properties[0].pressure.setlb(None)
-    m.fs.feed.properties[0].pressure.domain = Reals
     m.fs.feed.initialize()
 
     # Initialize pre-UF chemical chain
