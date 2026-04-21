@@ -16,7 +16,9 @@ from idaes.core import declare_process_block_class
 from idaes.core.util.constants import Constants
 from idaes.core.util.exceptions import InitializationError
 from idaes.core.util.exceptions import ConfigurationError
+from idaes.core.util import scaling as iscale
 import idaes.logger as idaeslog
+
 
 from watertap.core import InitializationMixin
 from watertap.costing.unit_models.pump import cost_pump
@@ -494,11 +496,45 @@ class PumpIsothermalData(InitializationMixin, PumpData):
         init_log.info("Initialization Complete: {}".format(idaeslog.condition(res)))
 
         if not check_optimal_termination(res):
-            # There could be additional initialization steps to try and find where
             raise InitializationError(f"Unit model {self.name} failed to initialize")
 
     def calculate_scaling_factors(self):
         super().calculate_scaling_factors()
+
+        # Assuming user would be providing their own scaling for flow like with property model?
+        if hasattr(self, "design_flow"):
+            iscale.set_scaling_factor(self.design_flow, 1, overwrite=False)
+
+        if hasattr(self, "design_head"):
+            iscale.set_scaling_factor(self.design_head, 1e-1, overwrite=False)
+
+        if hasattr(self, "system_curve_geometric_head"):
+            iscale.set_scaling_factor(
+                self.system_curve_geometric_head, 1e-1, overwrite=False
+            )
+
+        if hasattr(self, "system_curve_flow_constant"):
+            iscale.set_scaling_factor(
+                self.system_curve_flow_constant, 1e-3, overwrite=False
+            )
+
+        if hasattr(self, "ref_flow"):
+            iscale.set_scaling_factor(self.ref_flow, 1e-1, overwrite=False)
+
+        if hasattr(self, "ref_head"):
+            iscale.set_scaling_factor(self.ref_head, 1e-1, overwrite=False)
+
+        if hasattr(self, "design_efficiency"):
+            iscale.set_scaling_factor(self.design_efficiency, 1, overwrite=True)
+
+        if hasattr(self, "ref_efficiency"):
+            iscale.set_scaling_factor(self.ref_efficiency, 1, overwrite=True)
+
+        if hasattr(self, "design_speed_fraction"):
+            iscale.set_scaling_factor(self.design_speed_fraction, 1, overwrite=True)
+
+        if hasattr(self, "ref_speed_fraction"):
+            iscale.set_scaling_factor(self.ref_speed_fraction, 1, overwrite=True)
 
     @property
     def default_costing_method(self):
