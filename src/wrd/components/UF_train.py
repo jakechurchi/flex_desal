@@ -285,7 +285,6 @@ def main(
 
 
 if __name__ == "__main__":
-    # Where did we calculate the -12 psi? And actually why is it negative again?
     m = main(Pin=1e-8 * pyunits.psi, Qin=0.395 * 10654)
     # m.fs.uf_train.pump.unit.system_curve_geometric_head.fix(3.5)
 

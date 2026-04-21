@@ -465,7 +465,6 @@ def test_missing_filepath_for_dataset_mode():
             property_package=m.fs.properties,
             variable_efficiency=Efficiency.Flow,
             pump_curve_data_type=PumpCurveDataType.DataSet,
-            pump_curves=None,
         )
 
 

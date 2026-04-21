@@ -31,8 +31,6 @@ uf_pumps:
       units: dimensionless
   pump:
     pump_outlet_pressure:  
-      # This value is based on the value observed on SCADA during a site visit. 
-      # To be updated with actual UF pump pressure when available.
       # Assuming all pump have the same pressure
       value: 50  
       units: psi 

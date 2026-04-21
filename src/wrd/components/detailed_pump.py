@@ -189,16 +189,6 @@ def add_pump_scaling(blk):
 
 
 def initialize_system(m):
-    if m.fs.pump.uf:
-        # Allow negative suction pressure for UF configuration
-        m.fs.feed.properties[0].pressure.setlb(None)
-        m.fs.feed.properties[0].pressure.domain = Reals
-        m.fs.pump.feed.properties[0].pressure.setlb(None)
-        m.fs.pump.feed.properties[0].pressure.domain = Reals
-
-        # Change the bounds for the pump inlet pressure
-        m.fs.pump.unit.control_volume.properties_in[0].pressure.setlb(None)
-        m.fs.pump.unit.control_volume.properties_in[0].pressure.domain = Reals
 
     m.fs.feed.initialize()
     propagate_state(m.fs.feed_to_pump)
@@ -215,7 +205,7 @@ def initialize_pump(blk):
     try:
         blk.unit.initialize()
     except:
-        blk.unit.design_speed_fraction.bounds = (0, 1.1)
+        blk.unit.design_speed_fraction.bounds = (0, 1.04)
         blk.unit.initialize()
 
     propagate_state(blk.unit_to_product)

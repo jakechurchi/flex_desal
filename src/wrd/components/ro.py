@@ -394,6 +394,9 @@ def add_ro_costing(blk, costing_package=None):
         costing_package = m.fs.costing
 
     blk.unit.costing = UnitModelCostingBlock(flowsheet_costing_block=costing_package)
+    # Only want to cost opex (electricity)
+    costing_package.reverse_osmosis.membrane_cost.fix(0)
+    costing_package.reverse_osmosis.high_pressure_membrane_cost.fix(0)
 
 
 def main(file="wrd_inputs_8_19_21.yaml"):
