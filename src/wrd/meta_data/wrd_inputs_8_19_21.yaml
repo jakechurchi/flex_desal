@@ -17,7 +17,7 @@ feed_stream:
     value: 302.2
     units: K
   feed_pressure: 
-    value: 0.001 # Setting to 0 confuses solver
+    value: 1e-8 # Setting to 0 confuses solver
     units: psi 
 
 uf_pumps:

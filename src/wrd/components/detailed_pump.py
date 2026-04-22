@@ -189,6 +189,13 @@ def add_pump_scaling(blk):
 
 
 def initialize_system(m):
+    if m.fs.pump.uf:
+        # Allow negative suction pressure for UF configuration
+        m.fs.feed.properties[0].pressure.setlb(0)
+        m.fs.pump.feed.properties[0].pressure.setlb(0)
+
+        # Change the bounds for the pump inlet pressure
+        m.fs.pump.unit.control_volume.properties_in[0].pressure.setlb(0)
 
     m.fs.feed.initialize()
     propagate_state(m.fs.feed_to_pump)
@@ -205,7 +212,7 @@ def initialize_pump(blk):
     try:
         blk.unit.initialize()
     except:
-        blk.unit.design_speed_fraction.bounds = (0, 1.04)
+        blk.unit.design_speed_fraction.bounds = (0, 1.1)
         blk.unit.initialize()
 
     propagate_state(blk.unit_to_product)
@@ -333,23 +340,25 @@ if __name__ == "__main__":
     #     report_pump(m.fs.pump, add_costing=True)
 
     # # Stage 2
-    # m = main(Qin=1029, Pin=125 * pyunits.psi, stage_num=2)
+    m = main(
+        Qin=1047.4, Pin=131.2 * pyunits.psi, stage_num=2, file="wrd_inputs_3_13_21.yaml"
+    )
 
     # # Stage 3
     # m = main(Qin=384, Pin=(112.6 - 41.9) * pyunits.psi, stage_num=3)
 
     # UF pump
     # Now instead of a negative pressure due to the elevation change, the elevation change is already included and the inlet pressure is 1 atm (or for gage pressure = 0)
-    m = main(
-        Qin=4208,
-        Pin=1e-8 * pyunits.psi,
-        stage_num=1,
-        uf=True,
-    )
+    # m = main(
+    #     Qin=4208,
+    #     Pin=1e-8 * pyunits.psi,
+    #     stage_num=1,
+    #     uf=True,
+    # )
 
-    # m.fs.pump.unit.control_volume.properties_out[0].pressure.unfix()
-    # m.fs.pump.unit.design_speed_fraction.fix(.91)
-    m.fs.pump.unit.system_curve_geometric_head.fix(-3.5)
-    results = solver.solve(m)
-    assert_optimal_termination(results)
-    report_pump(m.fs.pump, add_costing=True)
+    # # m.fs.pump.unit.control_volume.properties_out[0].pressure.unfix()
+    # # m.fs.pump.unit.design_speed_fraction.fix(.91)
+    # m.fs.pump.unit.system_curve_geometric_head.fix(-3.5)
+    # results = solver.solve(m)
+    # assert_optimal_termination(results)
+    # report_pump(m.fs.pump, add_costing=True)

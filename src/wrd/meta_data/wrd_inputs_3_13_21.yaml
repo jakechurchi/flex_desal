@@ -16,8 +16,9 @@ feed_stream:
     value: 295.52
     units: K
   feed_pressure: 
-    value: 14.5
+    value: 1e-8
     units: psi 
+
 uf_pumps:
   split_fractions:
     train_1:
