@@ -16,8 +16,9 @@ feed_stream:
     value: 298.15
     units: K
   feed_pressure: 
-    value: 35.15
-    units: psi
+    value: 1
+    units: Pa
+
 # RO pump pressure for Train 2 data on 2/20/21.  
 ro_pumps:
   pump_stage1:

@@ -16,8 +16,8 @@ feed_stream:
     value: 302.2
     units: K
   feed_pressure: 
-    value: -12
-    units: psi 
+    value: 1
+    units: Pa 
 
 uf_pumps:
   split_fractions:
