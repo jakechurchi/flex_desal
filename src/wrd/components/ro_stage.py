@@ -294,12 +294,12 @@ if __name__ == "__main__":
     # run_august_stages()
     # run_march_stages()
     m = main(
-        Qin=340.86,
-        Cin=2.7,
+        Qin=2800,  # gpm?
+        Cin=0.528,
         Tin=295,
-        Pin=112.6 * pyunits.psi,
-        stage_num=3,
-        file="wrd_inputs_2300_gpm.yaml",
+        Pin=35.4 * pyunits.psi,
+        stage_num=1,
+        file="wrd_inputs_2800_gpm.yaml",
     )
 
     m.fs.ro_stage.ro.unit.recovery_vol_phase[0, "Liq"].fix(0.5)
