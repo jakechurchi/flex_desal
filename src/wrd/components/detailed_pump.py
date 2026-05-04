@@ -123,6 +123,8 @@ def build_pump(
                 0 * pyunits.psi / (density * Constants.acceleration_gravity),
                 to_units=pyunits.m,
             )
+            # Fugde Factor for additional losses
+            additional_eff_loss = 0.15
 
         elif stage_num == 2:
             # Checked these are correct from data in src/models/tests
@@ -132,6 +134,7 @@ def build_pump(
                 0 * pyunits.psi / (density * Constants.acceleration_gravity),
                 to_units=pyunits.m,
             )
+            additional_eff_loss = 0 # No additional losses
 
         blk.unit = PumpDetailed(
             property_package=prop_package,
@@ -142,6 +145,17 @@ def build_pump(
         )
         blk.unit.ref_speed_fraction.fix(1.0)
         blk.unit.system_curve_geometric_head.fix(geometric_head)
+        blk.unit.additional_eff_loss = additional_eff_loss
+
+        # Replace the unit-level efficiency constraint to include additional efficiency loss
+        if hasattr(blk.unit, "overall_efficiency_constraint"):
+            blk.unit.del_component(blk.unit.overall_efficiency_constraint)
+        @blk.unit.Constraint(doc="Overall efficiency calculation including motor, VFD, and additional losses")
+        def overall_efficiency_constraint(b):
+            return (
+                b.efficiency_pump[0]
+                == b.design_efficiency * b.motor_efficiency * b.vfd_efficiency * (1- b.additional_eff_loss)
+            )
 
     blk.product = StateJunction(property_package=prop_package)
 
@@ -328,8 +342,8 @@ def main(
 if __name__ == "__main__":
     # August 19, 2021 Data
     # Stage 1
-    # for pin in [35.4]:  # [10, 15, 20, 25, 30,35, 40]:
-    #     m = main(Pin=pin * pyunits.psi, stage_num=1, file="wrd_inputs_8_19_21.yaml")
+    for pin in [35.4]:  # [10, 15, 20, 25, 30,35, 40]:
+        m = main(Qin=2637, Pin=pin * pyunits.psi, stage_num=1, file="wrd_inputs_8_19_21.yaml")
     # Just testing to see what happens with an elevation change
     #     m.fs.pump.unit.system_curve_geometric_head.fix(10)
     #     m.fs.pump.unit.design_speed_fraction.bounds = (0, 1.05)
@@ -340,9 +354,9 @@ if __name__ == "__main__":
     #     report_pump(m.fs.pump, add_costing=True)
 
     # # Stage 2
-    m = main(
-        Qin=1047.4, Pin=131.2 * pyunits.psi, stage_num=2, file="wrd_inputs_3_13_21.yaml"
-    )
+    # m = main(
+    #     Qin=1047.4, Pin=131.2 * pyunits.psi, stage_num=2, file="wrd_inputs_3_13_21.yaml"
+    # )
 
     # # Stage 3
     # m = main(Qin=384, Pin=(112.6 - 41.9) * pyunits.psi, stage_num=3)
