@@ -1,6 +1,7 @@
 from copy import deepcopy
 from pyomo.environ import (
     ConcreteModel,
+    Expression,
     assert_optimal_termination,
     TransformationFactory,
     value,
@@ -277,6 +278,17 @@ def set_ro_op_conditions(blk):
     )
 
     blk.unit.mixed_permeate[0].pressure.fix(20 * pyunits.psi)
+    
+    # Adding estimate of first element flux as an output to report 
+    blk.unit.first_elem_prod = Expression(
+        expr = blk.unit.flux_mass_phase_comp[0,0.1,"Liq", "H2O"] *
+            get_config_value(
+                blk.config_data,
+                "element_membrane_area",
+                "reverse_osmosis_1d",
+                f"stage_{blk.stage_num}"
+                ) / blk.feed.properties[0].dens_mass_phase["Liq"]
+        )
 
 
 def initialize_system(m):
@@ -346,6 +358,7 @@ def report_ro(blk, w=30):
     print(f'{"Parameter":<{w}s}{"Value":<{w}s}{"Units":<{w}s}')
     print(f"{'-' * (3 * w)}")
 
+
     print(
         f'{f"Inlet Flow":<{w}s}{value(pyunits.convert(blk.feed.properties[0].flow_vol_phase["Liq"], to_units=pyunits.gallon / pyunits.minute)):<{w}.3f}{"gpm"}'
     )
@@ -385,7 +398,9 @@ def report_ro(blk, w=30):
     print(
         f'{f"Perm Backpressure":<{w}s}{value(pyunits.convert(blk.unit.mixed_permeate[0].pressure, to_units=pyunits.psi)):<{w}.3f}{f"psi"}'
     )
-
+    print(
+        f'{f"1st Elem. Perm. Flow":<{w}s}{value(pyunits.convert(blk.unit.first_elem_prod, to_units=pyunits.m**3 / pyunits.hour)):<{w}.3f}{f"m3/hr"}'
+    )
 
 def add_ro_costing(blk, costing_package=None):
 
