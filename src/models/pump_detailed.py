@@ -7,9 +7,7 @@ from pyomo.environ import (
     Param,
     Set,
     check_optimal_termination,
-    value,
     units as pyunits,
-    Reals,
 )
 from pyomo.common.config import ConfigValue, In
 
@@ -18,7 +16,9 @@ from idaes.core import declare_process_block_class
 from idaes.core.util.constants import Constants
 from idaes.core.util.exceptions import InitializationError
 from idaes.core.util.exceptions import ConfigurationError
+from idaes.core.util import scaling as iscale
 import idaes.logger as idaeslog
+
 
 from watertap.core import InitializationMixin
 from watertap.costing.unit_models.pump import cost_pump
@@ -182,7 +182,7 @@ class PumpIsothermalData(InitializationMixin, PumpData):
             #### Design point variables ####
             self.design_flow = Var(
                 initialize=1.0,
-                bounds=(0, 10000),
+                bounds=(0, None),
                 doc="""Design flowrate of the centrifugal pump. 
                 This could be the flowrate at the best efficiency point (BEP) or user selected operating point.
                 Used to build the system curve.""",
@@ -191,7 +191,7 @@ class PumpIsothermalData(InitializationMixin, PumpData):
 
             self.design_head = Var(
                 initialize=1.0,
-                bounds=(0, 10000),
+                bounds=(0, None),
                 doc="""Design head of the centrifugal pump. 
                 This could be the head at the best efficiency point (BEP) or user selected operating point.
                 Used to build the system curve.""",
@@ -215,30 +215,34 @@ class PumpIsothermalData(InitializationMixin, PumpData):
             )
 
             ### System curve variables ###
-            # design_head = system_curve_geometric_head +  system_curve_flow_constant * (design_flow)**2
-
             self.system_curve_geometric_head = Var(
                 initialize=0.0,
-                bounds=(0, 10000),
+                bounds=(None, None),
                 doc="""Geometric head constant for the pump, that represents the static head component used to define the system curve.""",
                 units=pyunits.m,
             )
 
             self.system_curve_flow_constant = Var(
                 initialize=1.0,
-                bounds=(0, 10000),
+                bounds=(0, None),
                 doc="""Geometric flow constant for the pump, represents the major and minor losses in pump. Used to define the system curve.""",
                 units=pyunits.m * (pyunits.m**3 / pyunits.s) ** (-2),
             )
 
             # Constraints connecting inlet and outlet conditions to the design point head and flow, used to solve for the system curve constants
+            # The head should include geometric head, not just deltaP!
             @self.Constraint(
                 doc="Design head is the pressure difference across the pump at the design point"
             )
             def design_head_constraint(b):
-                return b.design_head == b.control_volume.deltaP[0] / (
-                    b.control_volume.properties_out[0].dens_mass_phase["Liq"]
-                    * Constants.acceleration_gravity
+                return (
+                    b.design_head
+                    == b.system_curve_geometric_head
+                    + b.control_volume.deltaP[0]
+                    / (
+                        b.control_volume.properties_out[0].dens_mass_phase["Liq"]
+                        * Constants.acceleration_gravity
+                    )
                 )
 
             @self.Constraint(
@@ -262,14 +266,14 @@ class PumpIsothermalData(InitializationMixin, PumpData):
             #### Pump curve variables ####
             self.ref_flow = Var(
                 initialize=1.0,
-                bounds=(0, 10000),
+                bounds=(0, None),
                 doc="Reference flowrate for the pump on the pump curve from specification sheet",
                 units=pyunits.m**3 / pyunits.s,
             )
 
             self.ref_head = Var(
                 initialize=10.0,
-                bounds=(0, 10000),
+                bounds=(0, None),
                 doc="Reference head for the pump on the pump curve from specification sheet.",
                 units=pyunits.m,
             )
@@ -430,6 +434,25 @@ class PumpIsothermalData(InitializationMixin, PumpData):
             # User should directly fix efficiency_pump[0] and deltaP
             pass
 
+        if hasattr(self, "system_curve_geometric_head"):
+            # Replace equation calculating the pump work to add the geometric head (potential energy change) term to the mechanical work
+            self.del_component(self.actual_work)
+
+            @self.Constraint(
+                self.flowsheet().time, doc="Mechanical work including geometric head"
+            )
+            def actual_work(b, t):
+                return (
+                    b.work_mechanical[t]
+                    == (
+                        (b.design_head)
+                        * b.control_volume.properties_in[t].dens_mass_phase["Liq"]
+                        * Constants.acceleration_gravity
+                        * b.control_volume.properties_in[t].flow_vol_phase["Liq"]
+                    )
+                    / self.efficiency_pump[0]
+                )
+
     def initialize_build(
         self,
         state_args=None,
@@ -473,27 +496,45 @@ class PumpIsothermalData(InitializationMixin, PumpData):
         init_log.info("Initialization Complete: {}".format(idaeslog.condition(res)))
 
         if not check_optimal_termination(res):
-            # It's possible initialization fails if the initial flowrate
-            # if m.fs.unit.design_speed_fraction.fixed and m.fs.unit.design_head.fixed:
-            #     design_speed = m.fs.unit.design_speed_fraction.value
-            #     m.fs.unit.design_speed_fraction.unfix()
-            #     m.fs.unit.inlet.flow_mass_phase_comp[0, "Liq", "H2O"].fix(m.fs.unit.inlet.flow_mass_phase_comp[0, "Liq", "H2O"].value * .75)
-            #     m.fs.unit.inlet.flow_mass_phase_comp[0, "Liq", "TDS"].fix(m.fs.unit.inlet.flow_mass_phase_comp[0, "Liq", "TDS"].value * .75)
-            #     m.fs.unit.control_volume.properties_in[0].mass_frac_phase_comp["Liq", "TDS"].unfix() # This should remain fixed the whole time, but unfixing b/c it might cause property model to fail.
-            #     with idaeslog.solver_log(solve_log, idaeslog.DEBUG) as slc:
-            #         res = opt.solve(self, tee=slc.tee)
-            #     # Then refix speed, try again
-            #     m.fs.unit.design_speed_fraction.fix(design_speed)
-            #     m.fs.unit.inlet.flow_mass_phase_comp[0, "Liq", "H2O"].unfix()
-            #     with idaeslog.solver_log(solve_log, idaeslog.DEBUG) as slc:
-            #         res = opt.solve(self, tee=slc.tee)
-            #     if not check_optimal_termination(res):
-            #         raise InitializationError(f"Unit model {self.name} failed to initialize")
-            # else:
             raise InitializationError(f"Unit model {self.name} failed to initialize")
 
     def calculate_scaling_factors(self):
         super().calculate_scaling_factors()
+
+        # Assuming user would be providing their own scaling for flow like with property model?
+        if hasattr(self, "design_flow"):
+            iscale.set_scaling_factor(self.design_flow, 1, overwrite=False)
+
+        if hasattr(self, "design_head"):
+            iscale.set_scaling_factor(self.design_head, 1e-1, overwrite=False)
+
+        if hasattr(self, "system_curve_geometric_head"):
+            iscale.set_scaling_factor(
+                self.system_curve_geometric_head, 1e-1, overwrite=False
+            )
+
+        if hasattr(self, "system_curve_flow_constant"):
+            iscale.set_scaling_factor(
+                self.system_curve_flow_constant, 1e-3, overwrite=False
+            )
+
+        if hasattr(self, "ref_flow"):
+            iscale.set_scaling_factor(self.ref_flow, 1e-1, overwrite=False)
+
+        if hasattr(self, "ref_head"):
+            iscale.set_scaling_factor(self.ref_head, 1e-1, overwrite=False)
+
+        if hasattr(self, "design_efficiency"):
+            iscale.set_scaling_factor(self.design_efficiency, 1, overwrite=True)
+
+        if hasattr(self, "ref_efficiency"):
+            iscale.set_scaling_factor(self.ref_efficiency, 1, overwrite=True)
+
+        if hasattr(self, "design_speed_fraction"):
+            iscale.set_scaling_factor(self.design_speed_fraction, 1, overwrite=True)
+
+        if hasattr(self, "ref_speed_fraction"):
+            iscale.set_scaling_factor(self.ref_speed_fraction, 1, overwrite=True)
 
     @property
     def default_costing_method(self):

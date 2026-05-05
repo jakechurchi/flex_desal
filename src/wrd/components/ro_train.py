@@ -1,12 +1,15 @@
 from pyomo.environ import (
     ConcreteModel,
+    Constraint,
     Expression,
+    Var,
     value,
     assert_optimal_termination,
     units as pyunits,
     value,
     Set,
     TransformationFactory,
+    Objective,
 )
 from pyomo.network import Arc
 
@@ -28,7 +31,7 @@ from watertap.property_models.NaCl_T_dep_prop_pack import NaClParameterBlock
 from watertap.core.solvers import get_solver
 
 from wrd.utilities import load_config, get_config_file
-from wrd.components.pump import *
+from wrd.components.detailed_pump import *
 from wrd.components.ro import *
 from wrd.components.ro_stage import *
 from srp.utils import touch_flow_and_conc
@@ -141,8 +144,14 @@ def build_ro_train(
     blk.disposal = StateJunction(property_package=prop_package)
     touch_flow_and_conc(blk.disposal)
 
-    blk.recovery_vol = Expression(
-        expr=blk.product.properties[0].flow_vol_phase["Liq"]
+    blk.recovery_vol = Var(
+        initialize=0.5,
+        bounds=(0, 1),
+        units=pyunits.dimensionless,
+    )
+    blk.recovery_vol_constraint = Constraint(
+        expr=blk.recovery_vol
+        == blk.product.properties[0].flow_vol_phase["Liq"]
         / blk.feed.properties[0].flow_vol_phase["Liq"]
     )
     total_pump_power = 0
@@ -370,8 +379,20 @@ def main(
 
 
 if __name__ == "__main__":
-    m = main(add_costing=False)
-
-    # m = main(
-    #     Qin=2452, Cin=0.503, Tin=295, Pin=101325, file="wrd_ro_inputs_3_13_21.yaml"
+    m = main(Qin=2500, Pin=35 * pyunits.psi, add_costing=False)
+    # Try with unfixed pump outlet pressures but fixed overall recovery
+    # m.fs.ro_train.recovery_vol.fix(0.85)
+    m.fs.ro_train.stage[1].pump.unit.control_volume.properties_out[0].pressure.unfix()
+    m.fs.ro_train.stage[2].pump.unit.control_volume.properties_out[0].pressure.unfix()
+    # # Add a constraint so that the recovery is the same for both stages
+    # m.fs.ro_train.equal_stage_1_2_recovery = Constraint(
+    #     expr=m.fs.ro_train.stage[1].ro.unit.recovery_vol_phase[0, "Liq"]
+    #     == m.fs.ro_train.stage[2].ro.unit.recovery_vol_phase[0, "Liq"]
     # )
+    m.fs.ro_train.stage[2].ro.unit.recovery_vol_phase[0, "Liq"].fix(0.62)
+    m.fs.ro_train.stage[1].ro.unit.recovery_vol_phase[0, "Liq"].fix(0.61)
+    # m.fs.objective = Objective(expr=m.fs.ro_train.total_pump_power)
+
+    results = solver.solve(m, tee=True)
+    assert_optimal_termination(results)
+    report_ro_train(m.fs.ro_train, w=30, add_costing=False)

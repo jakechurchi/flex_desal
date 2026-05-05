@@ -19,7 +19,7 @@ from watertap.property_models.NaCl_T_dep_prop_pack import NaClParameterBlock
 from watertap.core.solvers import get_solver
 
 from wrd.utilities import load_config, get_config_file
-from wrd.components.pump import *
+from wrd.components.detailed_pump import *
 from wrd.components.ro import *
 from srp.utils import touch_flow_and_conc
 
@@ -291,5 +291,21 @@ def run_march_stages():
 
 
 if __name__ == "__main__":
-    run_august_stages()
-    run_march_stages()
+    # run_august_stages()
+    # run_march_stages()
+    m = main(
+        Qin=2800,  # gpm?
+        Cin=0.528,
+        Tin=295,
+        Pin=35.4 * pyunits.psi,
+        stage_num=1,
+        file="wrd_inputs_2800_gpm.yaml",
+    )
+
+    m.fs.ro_stage.ro.unit.recovery_vol_phase[0, "Liq"].fix(0.5)
+    m.fs.ro_stage.pump.unit.control_volume.properties_out[0].pressure.unfix()
+
+    assert degrees_of_freedom(m) == 0
+    results = solver.solve(m)
+    assert_optimal_termination(results)
+    report_ro_stage(m.fs.ro_stage)

@@ -7,6 +7,7 @@ from pyomo.environ import (
     Param,
     assert_optimal_termination,
     units as pyunits,
+    Reals,
 )
 from pyomo.network import Arc
 
@@ -188,12 +189,16 @@ def initialize_system(blk):
 
 
 def initialize_chem_addition(blk):
+
+    blk.feed.properties[0].pressure.setlb(0)
     blk.feed.initialize()
     propagate_state(blk.feed_to_unit)
 
+    blk.unit.properties[0].pressure.setlb(0)
     blk.unit.initialize()
 
     propagate_state(blk.unit_to_product)
+    blk.product.properties[0].pressure.setlb(0)
     blk.product.initialize()
 
 

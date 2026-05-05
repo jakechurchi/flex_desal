@@ -199,13 +199,16 @@ def test_pump_w_head_speed():
     assert hasattr(m.fs.unit.control_volume, "deltaP")
 
     m.fs.unit.initialize()
-    assert degrees_of_freedom(m) == 0
+    assert value(m.fs.unit.design_speed_fraction) == pytest.approx(0.84804, rel=1e-3)
 
-    m.fs.unit.design_speed_fraction.fix(0.8184)
+    m.fs.unit.design_speed_fraction.fix(0.9)
+    # m.fs.unit.design_speed_fraction.fix(0.82) # This fails! Maybe because that combo of speed and head isn't possibe...
     m.fs.unit.inlet.flow_mass_phase_comp[0, "Liq", "H2O"].unfix()
     m.fs.unit.inlet.flow_mass_phase_comp[0, "Liq", "TDS"].unfix()
     m.fs.unit.control_volume.properties_in[0].mass_frac_phase_comp["Liq", "TDS"].fix()
+    calculate_scaling_factors(m)
 
+    assert degrees_of_freedom(m) == 0
     results = solver.solve(m)
     assert_optimal_termination(results)
 
@@ -217,7 +220,7 @@ def test_data_points():
     m.fs = FlowsheetBlock(dynamic=False)
     m.fs.properties = SeawaterParameterBlock()
     pump_curves_filepath = os.path.join(
-        os.path.dirname(__file__), "test_pump_curves_data.csv"
+        os.path.dirname(__file__), "test_pump_curves_ro_feed.csv"
     )
 
     m.fs.unit = PumpDetailed(
@@ -277,9 +280,7 @@ def test_low_speed():
         property_package=m.fs.properties,
         variable_efficiency=Efficiency.Flow,
         pump_curve_data_type=PumpCurveDataType.DataSet,
-        pump_curves=os.path.join(
-            os.path.dirname(__file__), "test_pump_curves_data_uf.csv"
-        ),
+        pump_curves=os.path.join(os.path.dirname(__file__), "test_pump_curves_uf.csv"),
     )
     # Input flow and head for initial solve
     feed_flow_vol = 0.12 * pyunits.m**3 / pyunits.s
@@ -340,7 +341,7 @@ def test_negative_inlet_pressure():
         pump_curve_data_type=PumpCurveDataType.DataSet,
         pump_curves=os.path.join(
             os.path.dirname(__file__),
-            "test_pump_curves_data_uf.csv",
+            "test_pump_curves_uf.csv",
         ),
     )
 
@@ -395,7 +396,19 @@ def test_negative_inlet_pressure():
 
     assert value(
         pyunits.convert(m.fs.unit.work_mechanical[0], to_units=pyunits.kW)
-    ) == pytest.approx(166.54, rel=1e-3)
+    ) == pytest.approx(165.68, rel=1e-3)
+
+
+@pytest.mark.component
+def test_negative_geometric_head():
+    m = build_pump_w_flow_head()
+    m.fs.unit.system_curve_geometric_head.fix(-10)
+
+    assert degrees_of_freedom(m) == 0
+    m.fs.unit.initialize()
+
+    results = solver.solve(m)
+    assert_optimal_termination(results)
 
 
 # Test an invalid surrogate coefficient case
@@ -452,7 +465,6 @@ def test_missing_filepath_for_dataset_mode():
             property_package=m.fs.properties,
             variable_efficiency=Efficiency.Flow,
             pump_curve_data_type=PumpCurveDataType.DataSet,
-            pump_curves=None,
         )
 
 

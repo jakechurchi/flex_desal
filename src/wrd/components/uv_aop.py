@@ -200,10 +200,10 @@ def report_uv(blk, w=30):
     )
 
 
-def main():
+def main(Qin=0.27):
 
     m = build_system()
-    set_inlet_conditions(m)
+    set_inlet_conditions(m, Qin=Qin)
     set_uv_aop_op_conditions(m.fs.uv_aop_system)
     add_uv_aop_scaling(m.fs.uv_aop_system)
     calculate_scaling_factors(m)
@@ -222,4 +222,4 @@ def main():
 
 
 if __name__ == "__main__":
-    m = main()
+    m = main(Qin=588.2 / 3600)

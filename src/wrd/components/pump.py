@@ -24,6 +24,9 @@ from watertap.core.solvers import get_solver
 from wrd.utilities import load_config, get_config_value, get_config_file
 from srp.utils import touch_flow_and_conc
 
+######### CURRENTLY UNUSED MODEL, MADE OBSOLETE BY DETAILED PUMP MODEL. ##########
+
+
 __all__ = [
     "build_pump",
     "initialize_pump",
@@ -68,7 +71,6 @@ def build_system(stage_num=1, file="wrd_inputs_8_19_21.yaml"):
     m.fs.properties.set_default_scaling(
         "flow_mass_phase_comp", 1e2, index=("Liq", "NaCl")
     )
-
     return m
 
 

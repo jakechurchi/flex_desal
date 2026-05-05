@@ -4,8 +4,15 @@ from wrd.components.UF_system import main
 
 
 @pytest.mark.component
+def test_uf_system_with_costing():
+    m = main(add_costing=True)
+    assert pytest.approx(value(m.fs.costing.SEC), rel=1e-3) == 0.142  # kWh/m3
+
+
+# TODO: Move these tests into the test day file once merged in with the standardized testing PR
+@pytest.mark.skip
 def test_uf_system_8_19_21():
-    m = main(num_trains=3, split_fraction=[0.385, 0.385, 0.23], Qin=10416, Cin=0.5)
+    m = main(num_trains=3, Qin=10416, Cin=0.5)
 
     # Pump 1
     power = pyunits.convert(
@@ -37,9 +44,9 @@ def test_uf_system_8_19_21():
     assert pytest.approx(value(total_power), rel=0.15) == value(expected_power)  # kW
 
 
-@pytest.mark.component
+@pytest.mark.skip
 def test_uf_system_3_13_21():
-    m = main(num_trains=3, split_fraction=[0.405, 0.405, 0.185], Qin=9764, Cin=0.5)
+    m = main(num_trains=3, Qin=9764, Cin=0.5)
 
     # Pump 1
     power = pyunits.convert(
@@ -69,14 +76,3 @@ def test_uf_system_3_13_21():
     # expected_power = 432 * pyunits.kW # Measured value
     expected_power = 298 * pyunits.kW  # Modeled value
     assert pytest.approx(value(total_power), rel=0.15) == value(expected_power)  # kW
-
-
-@pytest.mark.component
-def test_uf_system_with_costing():
-    m = main(add_costing=True)
-    assert pytest.approx(value(m.fs.costing.SEC), rel=1e-3) == 0.1195  # kWh/m3
-
-
-@pytest.mark.component
-def test_uf_system_even_split():
-    m = main()

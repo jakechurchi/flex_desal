@@ -3,7 +3,7 @@ from pyomo.environ import (
     assert_optimal_termination,
     units as pyunits,
     value,
-    Set,
+    Reals,
     TransformationFactory,
 )
 from pyomo.network import Arc
@@ -24,7 +24,7 @@ from watertap.property_models.NaCl_T_dep_prop_pack import NaClParameterBlock
 from watertap.core.solvers import get_solver
 
 from wrd.utilities import load_config, get_config_file
-from wrd.components.pump import *
+from wrd.components.detailed_pump import *
 from wrd.components.UF_separator import *
 from srp.utils import touch_flow_and_conc
 
@@ -47,7 +47,11 @@ def build_system(file="wrd_inputs_8_19_21.yaml"):
     m.fs.properties = NaClParameterBlock()
 
     m.fs.uf_train = FlowsheetBlock(dynamic=False)
-    build_uf_train(m.fs.uf_train, prop_package=m.fs.properties, file=file)
+    build_uf_train(
+        m.fs.uf_train,
+        prop_package=m.fs.properties,
+        file=file,
+    )
 
     m.fs.feed = Feed(property_package=m.fs.properties)
     touch_flow_and_conc(m.fs.feed)
@@ -79,7 +83,11 @@ def build_system(file="wrd_inputs_8_19_21.yaml"):
     return m
 
 
-def build_uf_train(blk, file="wrd_inputs_8_19_21.yaml", prop_package=None):
+def build_uf_train(
+    blk,
+    file="wrd_inputs_8_19_21.yaml",
+    prop_package=None,
+):
 
     if prop_package is None:
         m = blk.model()
@@ -107,7 +115,12 @@ def build_uf_train(blk, file="wrd_inputs_8_19_21.yaml", prop_package=None):
     touch_flow_and_conc(blk.disposal)
 
     blk.pump = FlowsheetBlock(dynamic=False)
-    build_pump(blk.pump, file=file, prop_package=prop_package, uf=True)
+    build_pump(
+        blk.pump,
+        file=file,
+        prop_package=prop_package,
+        uf=True,
+    )
     blk.pump.config_data = (
         blk.config_data
     )  # Will need to revist how config data is being handled
@@ -129,7 +142,6 @@ def build_uf_train(blk, file="wrd_inputs_8_19_21.yaml", prop_package=None):
 
 def set_uf_train_scaling(blk):
     add_pump_scaling(blk.pump)
-    # add_uf_scaling(blk.UF) # Seems like there are no variables to scale for separator
 
 
 def set_inlet_conditions(m, Qin=2637, Cin=0.5, Tin=298, Pin=101325):
@@ -145,15 +157,26 @@ def set_inlet_conditions(m, Qin=2637, Cin=0.5, Tin=298, Pin=101325):
 
 
 def set_uf_train_op_conditions(blk, split_fractions=None):
-    set_pump_op_conditions(blk.pump, uf=True)
+    set_pump_op_conditions(blk.pump)
     if split_fractions is None:
         split_fractions = {
-            "product": {"H2O": 0.99, "NaCl": 0.99},
+            "product": {"H2O": 0.96, "NaCl": 0.96},
         }
     set_separator_op_conditions(blk.UF, split_fractions)
+    density = 1000 * pyunits.kg / pyunits.m**3
+    geometric_head = pyunits.convert(
+        12 * pyunits.psi / (density * 9.81 * pyunits.m / pyunits.s**2),
+        to_units=pyunits.m,
+    )
+    # Fix pump characteristics
+    blk.pump.unit.system_curve_geometric_head.fix(geometric_head)
 
 
 def initialize_system(m):
+
+    m.fs.feed.properties[0].pressure.setlb(None)
+    m.fs.feed.properties[0].pressure.domain = Reals
+
     m.fs.feed.initialize()
     propagate_state(m.fs.feed_to_train)
 
@@ -166,6 +189,10 @@ def initialize_system(m):
 
 
 def initialize_uf_train(blk):
+    blk.feed.properties[0].pressure.setlb(0)
+    blk.pump.feed.properties[0].pressure.setlb(0)
+    blk.pump.unit.control_volume.properties_in[0].pressure.setlb(0)
+
     blk.feed.initialize()
 
     propagate_state(blk.feed_to_pump)
@@ -224,7 +251,7 @@ def report_uf_train(blk, train_num=0, w=30):
 
 
 def main(
-    Qin=2637,
+    Qin=3000,
     Cin=0.528,
     Tin=302,
     Pin=101325,
@@ -239,6 +266,7 @@ def main(
     set_uf_train_op_conditions(m.fs.uf_train)
     assert degrees_of_freedom(m) == 0
     initialize_system(m)
+    assert degrees_of_freedom(m) == 0
     results = solver.solve(m, tee=True)
     assert_optimal_termination(results)
 
@@ -261,4 +289,9 @@ def main(
 
 
 if __name__ == "__main__":
-    m = main()
+    m = main(Pin=1e-8 * pyunits.psi, Qin=0.395 * 10654)
+    # m.fs.uf_train.pump.unit.system_curve_geometric_head.fix(3.5)
+
+    # results = solver.solve(m)
+    # assert_optimal_termination(results)
+    # report_uf_train(m.fs.uf_train)
