@@ -115,6 +115,7 @@ def build_pump(
                 12 * pyunits.psi / (density * Constants.acceleration_gravity),
                 to_units=pyunits.m,
             )
+            additional_eff_loss = 0  # No additional losses
 
         elif stage_num == 1:
             head_surrogate_coeffs = {0: 114.22, 1: -410.6, 2: 2729.2, 3: -8089.1}

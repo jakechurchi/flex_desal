@@ -11,7 +11,7 @@ def test_ro_PRO1_8_19_21():
         Qin=2637,
         Cin=0.528,
         Tin=302,
-        Pin=101325,
+        Pin=35.4 * pyunits.psi,
         stage_num=1,
         file="wrd_inputs_8_19_21.yaml",
     )
@@ -92,7 +92,7 @@ def test_ro_PRO1_3_13_21():
         Qin=2451.2,
         Cin=0.528,
         Tin=302,
-        Pin=35 * pyunits.psi,
+        Pin=35.4 * pyunits.psi,
         stage_num=1,
         file="wrd_inputs_3_13_21.yaml",
     )
