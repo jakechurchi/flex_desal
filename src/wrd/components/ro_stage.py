@@ -159,10 +159,10 @@ def initialize_system(m):
 
 
 def initialize_ro_stage(blk):
-
     blk.feed.initialize()
     propagate_state(blk.feed_to_pump)
 
+    touch_flow_and_conc(blk.pump.unit)
     initialize_pump(blk.pump)
 
     propagate_state(blk.pump_to_ro)
@@ -294,12 +294,12 @@ if __name__ == "__main__":
     # run_august_stages()
     # run_march_stages()
     m = main(
-        Qin=2800,  # gpm?
-        Cin=0.528,
+        Qin=396*.29/.25,  # gpm?
+        Cin=2.58,
         Tin=295,
-        Pin=35.4 * pyunits.psi,
-        stage_num=1,
-        file="wrd_inputs_2800_gpm.yaml",
+        Pin= 100 * pyunits.psi,
+        stage_num=3,
+        file="wrd_inputs_8_19_21.yaml",
     )
 
     m.fs.ro_stage.ro.unit.recovery_vol_phase[0, "Liq"].fix(0.5)

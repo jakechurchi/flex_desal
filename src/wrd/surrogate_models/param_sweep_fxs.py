@@ -1,7 +1,9 @@
 from watertap.core.solvers import get_solver
 from parameter_sweep import LinearSample, get_sweep_params_from_yaml
+from wrd.components.ro_stage import initialize_ro_stage
 from wrd.components.ro_train import *
-from pyomo.environ import value, solve, ConcreteModel, TransformationFactory, units as pyunits
+from models import HeadLoss
+from pyomo.environ import assert_optimal_termination, ConcreteModel, TransformationFactory, units as pyunits, Constraint, value, Objective, minimize
 from pyomo.network import Arc
 from srp.utils import touch_flow_and_conc
 from idaes.models.unit_models import (
@@ -13,9 +15,72 @@ from watertap.property_models.NaCl_T_dep_prop_pack import NaClParameterBlock
 from idaes.core.util.scaling import calculate_scaling_factors
 from idaes.core.util.initialization import propagate_state
 from idaes.core.util.model_statistics import degrees_of_freedom
+from wrd.utilities import *
+from idaes.core.util.model_diagnostics import DiagnosticsToolbox
+
+# Debugging
+def print_arcs_to_port(model, port, port_name=""):
+    """Print all arcs connected to a given port (as source or destination)"""
+    from pyomo.network import Arc
+    
+    print(f"\n{'='*60}")
+    print(f"Arcs connected to {port_name or port}:")
+    print(f"{'='*60}")
+    
+    found = False
+    for component in model.component_data_objects(Arc, descend_into=True):
+        name = component.getname(fully_qualified=True)
+        if component.destination is port:
+            print(f"  ← {name}: {component.source} → {port_name or port}")
+            found = True
+        elif component.source is port:
+            print(f"  → {name}: {port_name or port} → {component.destination}")
+            found = True
+    
+    if not found:
+        print(f"  (No arcs found)")
+    print()
+
+
+def report_ports_with_multiple_arcs(model):
+    """Report ports with more than one incoming or outgoing Arc."""
+    from collections import defaultdict
+    from pyomo.network import Arc
+
+    incoming = defaultdict(list)
+    outgoing = defaultdict(list)
+
+    for arc in model.component_data_objects(Arc, descend_into=True):
+        arc_name = arc.getname(fully_qualified=True)
+        outgoing[id(arc.source)].append((arc.source, arc_name))
+        incoming[id(arc.destination)].append((arc.destination, arc_name))
+
+    found_issue = False
+    print(f"\n{'='*60}")
+    print("Port arc cardinality check")
+    print(f"{'='*60}")
+
+    for entries in incoming.values():
+        if len(entries) > 1:
+            port = entries[0][0]
+            arcs = [name for _, name in entries]
+            print(f"IN  > 1 : {port} <- {arcs}")
+            found_issue = True
+
+    for entries in outgoing.values():
+        if len(entries) > 1:
+            port = entries[0][0]
+            arcs = [name for _, name in entries]
+            print(f"OUT > 1 : {port} -> {arcs}")
+            found_issue = True
+
+    if not found_issue:
+        print("No ports with multiple incoming/outgoing arcs found.")
+    print()
+    return found_issue
 
 # Build flowsheet function
-def build_flowsheet(op_limts=None):
+def build_flowsheet(op_limts=None,scenario=None):
     m = ConcreteModel()
     m.fs = FlowsheetBlock(dynamic=False)
     m.fs.properties = NaClParameterBlock()
@@ -49,7 +114,30 @@ def build_flowsheet(op_limts=None):
         source=m.fs.ro_train.disposal.outlet,
         destination=m.fs.brine.inlet,
     )
+    
+    # Add the pressure drop between PRO and TSRO
+    m.fs.ro_train.tsro_header = HeadLoss(property_package=m.fs.properties)
+    touch_flow_and_conc(m.fs.ro_train.tsro_header)
+    m.fs.ro_train.tsro_header.control_volume.deltaP[0].fix(
+        get_config_value(m.fs.ro_train.config_data, "tsro_header_loss", "headers")
+    )
+    
+    # Undo connection between the second and third stage to add in the head loss unit
+    # build_ro_train already expands arcs internally, so remove the expanded block too.
+    m.fs.ro_train.del_component('stage_2_to_stage_3')
+    if hasattr(m.fs.ro_train, "stage_2_to_stage_3_expanded"):
+        m.fs.ro_train.del_component("stage_2_to_stage_3_expanded")
+    m.fs.ro_train.stage_2_to_tsro_header = Arc(
+        source=m.fs.ro_train.stage[2].disposal.outlet,
+        destination=m.fs.ro_train.tsro_header.inlet,
+    )
+    m.fs.ro_train.tsro_header_to_stage_3 = Arc(
+        source=m.fs.ro_train.tsro_header.outlet,
+        destination=m.fs.ro_train.stage[3].feed.inlet,
+    )
 
+    # report_ports_with_multiple_arcs(m)
+    
     TransformationFactory("network.expand_arcs").apply_to(m)
 
     m.fs.properties.set_default_scaling(
@@ -75,24 +163,16 @@ def build_flowsheet(op_limts=None):
     set_ro_train_op_conditions(m.fs.ro_train)
     # Set limits on each stage recovery and flowrate
     for i in m.fs.ro_train.stages:
-        m.fs.ro_train.stage[i].recovery_vol_phase[0, "Liq"].setlb(op_limts[f"Stage {i}"]["RR_min"])
-        m.fs.ro_train.stage[i].recovery_vol_phase[0, "Liq"].setub(op_limts[f"Stage {i}"]["RR_max"])
+        m.fs.ro_train.stage[i].ro.unit.recovery_vol_phase[0, "Liq"].setlb(op_limts[f"Stage {i}"]["RR_min"])
+        m.fs.ro_train.stage[i].ro.unit.recovery_vol_phase[0, "Liq"].setub(op_limts[f"Stage {i}"]["RR_max"])
         m.fs.ro_train.stage[i].feed.properties[0].flow_vol_phase["Liq"].setlb(
             op_limts[f"Stage {i}"]["Qin_min"]
         )
         m.fs.ro_train.stage[i].feed.properties[0].flow_vol_phase["Liq"].setub(
             op_limts[f"Stage {i}"]["Qin_max"]
         )
-    # Initialize system
-    assert degrees_of_freedom(m) == 0
-    m.fs.feed.initialize()
-    propagate_state(m.fs.feed_to_train)
-    initialize_ro_train(m.fs.ro_train)
-    propagate_state(m.fs.train_to_product)
-    m.fs.product.initialize()
-    propagate_state(m.fs.train_to_brine)
-    m.fs.brine.initialize()
-
+    print(degrees_of_freedom(m)) # Should be zero.
+    return m
 
 # Build sweep parameters function
 def build_sweep_params(
@@ -111,7 +191,7 @@ def build_sweep_params(
         )
 
         sweep_params["Feed Flow"] = LinearSample(
-            m.fs.ro_train.feed.properties_in[0].flow_vol_phase["Liq"],
+            m.fs.ro_train.feed.properties[0].flow_vol_phase["Liq"],
             var_lims["Qin_lb"],
             var_lims["Qin_ub"],
             num_samples,
@@ -123,40 +203,162 @@ def build_sweep_params(
     return sweep_params
 
 
+def initialize_model(m):
+    # Initialize system
+    # Changing the defaults for the third stage
+    m.fs.ro_train.stage[3].pump.unit.control_volume.properties_out[0].pressure.fix(149 * pyunits.psi)
+    assert degrees_of_freedom(m) == 0
+    m.fs.feed.initialize()
+    propagate_state(m.fs.feed_to_train)
+    # Initialize train, including the tsro header
+    blk = m.fs.ro_train
+    a = blk.find_component("feed_to_stage_1")
+    propagate_state(a)
+    initialize_ro_stage(blk.stage[1])
+    a = blk.find_component("stage_1_to_stage_2")
+    propagate_state(a)
+    initialize_ro_stage(blk.stage[2])
+    a = blk.find_component("stage_2_to_tsro_header")
+    propagate_state(a)
+    blk.tsro_header.initialize()
+    a = blk.find_component("tsro_header_to_stage_3")
+    propagate_state(a)   
+    initialize_ro_stage(blk.stage[3])
+    a = blk.find_component("stage_3_to_product")
+    propagate_state(a)
+    a = blk.find_component("stage_3_to_brine")
+    propagate_state(a)
+    a = blk.find_component("stage_3_to_product")
+    propagate_state(a)
+    blk.mixer.initialize()
+    propagate_state(blk.mixer_to_product)
+    blk.product.initialize()
+    print(blk.stage[3].ro.unit.recovery_vol_phase[0, "Liq"]())
+    print(blk.stage[3].feed.properties[0].flow_vol_phase["Liq"]())
+    print(blk.stage[2].pump.unit.control_volume.properties_out[0].pressure())
+    print(blk.stage[3].pump.unit.control_volume.properties_out[0].pressure())
+    
+    propagate_state(m.fs.train_to_product)
+    m.fs.product.initialize()
+    propagate_state(m.fs.train_to_brine)
+    m.fs.brine.initialize()   
+
+    assert degrees_of_freedom(m) == 0
+    # --solve---
+    solver = get_solver()
+    results = solver.solve(m, tee = True)
+    # assert_optimal_termination(results)
+    return results
+
 # Optimizaiton function
 def optimize(m, solver=None, check_termination=True):
+    print(f"Degrees of freedom start of optimize: {degrees_of_freedom(m)}")
+    # Fix the mass fraction and unfix the flow mass so that the flow volume can be fixed by param sweep
+    m.fs.feed.properties[0].mass_frac_phase_comp["Liq", "NaCl"].fix()
+    m.fs.feed.properties[0].flow_mass_phase_comp['Liq','H2O'].unfix()
+    m.fs.feed.properties[0].flow_mass_phase_comp['Liq','NaCl'].unfix()
+    # Pump outlet pressures unfixed
+    m.fs.ro_train.stage[1].pump.unit.control_volume.properties_out[0].pressure.unfix()
+    m.fs.ro_train.stage[2].pump.unit.control_volume.properties_out[0].pressure.unfix()
+    m.fs.ro_train.stage[3].pump.unit.control_volume.properties_out[0].pressure.unfix()
+    # But to make sure there are 0 DOF Assume S1 and S2 have same recovery and 
+    m.fs.ro_train.eq_recovery = Constraint(
+        expr= m.fs.ro_train.stage[1].ro.unit.recovery_vol_phase[0, "Liq"] == m.fs.ro_train.stage[2].ro.unit.recovery_vol_phase[0, "Liq"])   
+    
+    m.fs.obj = Objective(expr= m.fs.ro_train.total_pump_power, sense=minimize) # Dummy objective to trigger solve
+
+    print(f"Degrees of freedom right before solve: {degrees_of_freedom(m)}") # Should be 0
+    # assert degrees_of_freedom(m) == 0
     # --solve---
-    return solve(m, solver=solver, check_termination=check_termination)
+    solver = get_solver()
+    results = solver.solve(m, tee = True)
+    # assert_optimal_termination(results)
+    return results
 
 
 def build_outputs(m):
+    def _pump_unit(stage_blk):
+        # Some workflows expose the pump model directly, others nest it under stage.pump.unit
+        return stage_blk.pump.unit if hasattr(stage_blk.pump, "unit") else stage_blk.pump
+
     outputs = {}
     # RR and Flows
-    outputs["Stage1 RR"] = m.fs.ro_train.stage[1].recovery_vol_phase[0, "Liq"]
-    outputs["Stage2 RR"] = m.fs.ro_train.stage[2].recovery_vol_phase[0, "Liq"]
-    outputs["Stage3 RR"] = m.fs.ro_train.stage[3].recovery_vol_phase[0, "Liq"]
-    outputs["Stage1 Qin"] = m.fs.ro_train.stage[1].feed.properties[0].flow_vol_phase["Liq"] # This is an input
+    outputs["Stage1 RR"] = m.fs.ro_train.stage[1].ro.unit.recovery_vol_phase[0, "Liq"]
+    outputs["Stage2 RR"] = m.fs.ro_train.stage[2].ro.unit.recovery_vol_phase[0, "Liq"]
+    outputs["Stage3 RR"] = m.fs.ro_train.stage[3].ro.unit.recovery_vol_phase[0, "Liq"]
+    outputs["Stage1 Qin"] = m.fs.ro_train.stage[1].feed.properties[0].flow_vol_phase["Liq"]  # This is an input
     outputs["Stage2 Qin"] = m.fs.ro_train.stage[2].feed.properties[0].flow_vol_phase["Liq"]
     outputs["Stage3 Qin"] = m.fs.ro_train.stage[3].feed.properties[0].flow_vol_phase["Liq"]
+
+    pump1 = _pump_unit(m.fs.ro_train.stage[1])
+    pump2 = _pump_unit(m.fs.ro_train.stage[2])
+    pump3 = _pump_unit(m.fs.ro_train.stage[3])
+
     # Pressures
-    outputs["Stage1 Pin"] = m.fs.ro_train.stage[1].pump.unit.control_volume.properties_in[0].pressure
-    outputs["Stage2 Pin"] = m.fs.ro_train.stage[2].pump.unit.control_volume.properties_in[0].pressure
-    outputs["Stage3 Pin"] = m.fs.ro_train.stage[3].pump.unit.control_volume.properties_in[0].pressure
-    outputs["Stage1 Pout"] = m.fs.ro_train.stage[1].pump.unit.control_volume.properties_out[0].pressure
-    outputs["Stage2 Pout"] = m.fs.ro_train.stage[2].pump.unit.control_volume.properties_out[0].pressure
-    outputs["Stage3 Pout"] = m.fs.ro_train.stage[3].pump.unit.control_volume.properties_out[0].pressure
+    outputs["Stage1 Pin"] = pump1.control_volume.properties_in[0].pressure
+    outputs["Stage2 Pin"] = pump2.control_volume.properties_in[0].pressure
+    outputs["Stage3 Pin"] = pump3.control_volume.properties_in[0].pressure
+    outputs["Stage1 Pout"] = pump1.control_volume.properties_out[0].pressure
+    outputs["Stage2 Pout"] = pump2.control_volume.properties_out[0].pressure
+    outputs["Stage3 Pout"] = pump3.control_volume.properties_out[0].pressure
+
     # Powers
     outputs["Total Power"] = m.fs.ro_train.total_pump_power
-    outputs["Stage1 Power"] = m.fs.ro_train.stage[1].pump.unit.work_mechanical[0]
-    outputs["Stage2 Power"] = m.fs.ro_train.stage[2].pump.unit.work_mechanical[0]
-    outputs["Stage3 Power"] = m.fs.ro_train.stage[3].pump.unit.work_mechanical[0]
+    outputs["Stage1 Power"] = pump1.work_mechanical[0]
+    outputs["Stage2 Power"] = pump2.work_mechanical[0]
+    outputs["Stage3 Power"] = pump3.work_mechanical[0]
+
     # Other
-    outputs["Stage1 Peak Flux"] = m.fs.ro_train.stage[1].unit.first_elem_prod
-    outputs["Stage2 Peak Flux"] = m.fs.ro_train.stage[2].unit.first_elem_prod
-    outputs["Stage3 Peak Flux"] = m.fs.ro_train.stage[3].unit.first_elem_prod
-    outputs["Stage1 Perm. Conc."] = m.fs.ro_train.stage[1].unit.mixed_permeate[0].conc_mass_phase_comp["Liq", "NaCl"]
-    outputs["Stage2 Perm. Conc."] = m.fs.ro_train.stage[2].unit.mixed_permeate[0].conc_mass_phase_comp["Liq", "NaCl"]
-    outputs["Stage3 Perm. Conc."] = m.fs.ro_train.stage[3].unit.mixed_permeate[0].conc_mass_phase_comp["Liq", "NaCl"]
-    
+    outputs["Stage1 Peak Flux"] = m.fs.ro_train.stage[1].ro.unit.first_elem_prod
+    outputs["Stage2 Peak Flux"] = m.fs.ro_train.stage[2].ro.unit.first_elem_prod
+    outputs["Stage3 Peak Flux"] = m.fs.ro_train.stage[3].ro.unit.first_elem_prod
+    outputs["Stage1 Perm. Conc."] = m.fs.ro_train.stage[1].ro.unit.mixed_permeate[0].conc_mass_phase_comp["Liq", "NaCl"]
+    outputs["Stage2 Perm. Conc."] = m.fs.ro_train.stage[2].ro.unit.mixed_permeate[0].conc_mass_phase_comp["Liq", "NaCl"]
+    outputs["Stage3 Perm. Conc."] = m.fs.ro_train.stage[3].ro.unit.mixed_permeate[0].conc_mass_phase_comp["Liq", "NaCl"]
+
     return outputs
 
+if __name__ == "__main__":
+    op_limts = {
+        "Stage 1": {
+            "RR_min": 0.55,
+            "RR_max": 0.62,
+            "Qin_min": 420 / 3600,
+            "Qin_max": 635 / 3600,
+        },
+        "Stage 2": {
+            "RR_min": 0.55,
+            "RR_max": 0.62,
+            "Qin_min": 200 / 3600,
+            "Qin_max": 251 / 3600,
+        },
+        "Stage 3": {
+            "RR_min": 0.40,
+            "RR_max": 0.55,
+            "Qin_min": 75 / 3600,
+            "Qin_max": 126 / 3600,
+        },
+    }
+    m = build_flowsheet(op_limts=op_limts,scenario=None)
+    initialize_model(m)
+    # Dummy version of fixing value
+    print(f"Degrees of freedom before fixing: {degrees_of_freedom(m)}") # Should be 0
+    # Param Sweep will fix these two variables
+    m.fs.ro_train.recovery_vol.fix(0.88)
+    m.fs.feed.properties[0].flow_vol_phase["Liq"].fix(0.158)
+
+    print(f"Degrees of freedom after fixing: {degrees_of_freedom(m)}")
+    results = optimize(m)
+
+    print(m.fs.ro_train.stage[3].pump.unit.control_volume.properties_out[0].conc_mass_phase_comp["Liq", "NaCl"]())
+    print(value(pyunits.convert(m.fs.ro_train.stage[2].pump.unit.control_volume.properties_out[0].pressure, to_units=pyunits.psi)))
+    print(value(pyunits.convert(m.fs.ro_train.stage[3].pump.unit.control_volume.properties_in[0].pressure, to_units=pyunits.psi)))
+    print(value(pyunits.convert(m.fs.ro_train.stage[3].pump.unit.control_volume.properties_out[0].pressure, to_units=pyunits.psi)))
+
+    print(m.fs.ro_train.stage[3].feed.properties[0].flow_vol_phase["Liq"]())
+    print(m.fs.ro_train.stage[1].ro.unit.recovery_vol_phase[0, "Liq"]())
+    print(m.fs.ro_train.stage[2].ro.unit.recovery_vol_phase[0, "Liq"]())
+    print(m.fs.ro_train.stage[3].ro.unit.recovery_vol_phase[0, "Liq"]())
+    
+    dt = DiagnosticsToolbox(m)
+    assert_optimal_termination(results)
