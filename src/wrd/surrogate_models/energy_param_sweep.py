@@ -32,10 +32,10 @@ def create_parameter_sweep_object(num_samples, num_procs, op_limits, var_lims):
         "parallel_back_end": "MultiProcessing",  # ConcurrentFutures, MPI, Ray available
         "number_of_subprocesses": num_procs,
         # Additional useful keyword arguments
-        "csv_results_file_name": None,  # For storing results as CSV
+        "csv_results_file_name": "ro_sweep_results.csv",  # For storing results as CSV
         "h5_parent_group_name": None,  # Useful for loop tool
         "update_sweep_params_before_init": False,
-        "initialize_before_sweep": False,
+        "initialize_before_sweep": False, #!!!!!!!
         "reinitialize_function": None,
         "reinitialize_kwargs": {},
         "reinitialize_before_sweep": False,
@@ -52,8 +52,8 @@ def create_parameter_sweep_object(num_samples, num_procs, op_limits, var_lims):
     return ps, kwargs_dict
 
 if __name__ == "__main__":
-    num_samples = 2
-    num_procs = 2
+    num_samples = 6
+    num_procs = 6
     op_limts = {
         "Stage 1": {
             "RR_min": 0.55,
@@ -74,12 +74,20 @@ if __name__ == "__main__":
             "Qin_max": 126 / 3600,
         },
     }
+
     var_lims = {
         "RR_lb": 0.88,
         "RR_ub": 0.93,
-        "Qin_lb": 420 / 3600,  # m3/s
+        "Qin_lb": 522 / 3600,  # m3/s
         "Qin_ub": 635 / 3600,  # m3/s
     }
+    # Tighter limits on flowrate and recovery
+    # var_lims = {
+    #     "RR_lb": 0.9,
+    #     "RR_ub": 0.92,
+    #     "Qin_lb": 602 / 3600,  # m3/s
+    #     "Qin_ub": 635 / 3600,  # m3/s
+    # }
     ps, kwargs_dict = create_parameter_sweep_object(
         num_samples, num_procs, op_limts, var_lims
     )
