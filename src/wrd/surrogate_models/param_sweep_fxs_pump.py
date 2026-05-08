@@ -32,7 +32,7 @@ def build_flowsheet(op_limts=None,scenario=None):
         stage_num=1,
         file="wrd_inputs_8_19_21.yaml",
         prop_package=m.fs.properties,
-        uf=False,
+        uf=True,
     )
 
     m.fs.product = Product(property_package=m.fs.properties)
@@ -61,11 +61,14 @@ def build_flowsheet(op_limts=None,scenario=None):
     calculate_scaling_factors(m)
 
     # Set feed and operational conditions
+    m.fs.feed.properties[0].pressure.setlb(0)
+    m.fs.pump.unit.control_volume.properties_in[0].pressure.setlb(0)
+
     m.fs.feed.properties.calculate_state(
     var_args={
-        ("flow_vol_phase", ("Liq")): 2500 * pyunits.gallons / pyunits.minute,
+        ("flow_vol_phase", ("Liq")): 3000 * pyunits.gallons / pyunits.minute,
         ("conc_mass_phase_comp", ("Liq", "NaCl")): 0.5 * pyunits.g / pyunits.L,
-        ("pressure", None): 35.4 * pyunits.psi,
+        ("pressure", None): 0.1 * pyunits.psi,
         ("temperature", None): 298.15 * pyunits.K,
     },
     hold_state=True,
@@ -87,8 +90,8 @@ def build_sweep_params(
     if scenario == "default":
         sweep_params["Feed Flow"] = LinearSample(
             m.fs.feed.properties[0].flow_vol_phase["Liq"],
-            0,
-            .1,
+            var_lims["Feed Flow"]["Qin_min"],
+            var_lims["Feed Flow"]["Qin_max"],
             num_samples,
         )
     else:
@@ -99,6 +102,13 @@ def build_sweep_params(
 
 
 def initialize_model(m):
+    if m.fs.pump.uf:
+        # Allow negative suction pressure for UF configuration
+        m.fs.feed.properties[0].pressure.setlb(0)
+        m.fs.pump.feed.properties[0].pressure.setlb(0)
+
+        # Change the bounds for the pump inlet pressure
+        m.fs.pump.unit.control_volume.properties_in[0].pressure.setlb(0)
     # Initialize system
     m.fs.feed.initialize()
     propagate_state(m.fs.feed_to_pump)
