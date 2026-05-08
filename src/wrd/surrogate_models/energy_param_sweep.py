@@ -18,7 +18,7 @@ def create_parameter_sweep_object(num_samples, num_procs, op_limits, var_lims):
         # Arguments being used in the demo
         "h5_results_file_name": "ps_demo.h5",  # Resulting output file name
         "build_model": build_flowsheet,  # Function that builds the flowsheet model
-        "build_model_kwargs": dict(scenario=None, op_limts=op_limits),
+        "build_model_kwargs": dict(scenario=None, op_limits=op_limits),
         "build_sweep_params": build_sweep_params,  # Function for building sweep param dictionary
         "build_sweep_params_kwargs": dict(
             num_samples=num_samples, var_lims=var_lims, scenario="default"
@@ -32,7 +32,7 @@ def create_parameter_sweep_object(num_samples, num_procs, op_limits, var_lims):
         "parallel_back_end": "MultiProcessing",  # ConcurrentFutures, MPI, Ray available
         "number_of_subprocesses": num_procs,
         # Additional useful keyword arguments
-        "csv_results_file_name": "ro_sweep_results.csv",  # For storing results as CSV
+        "csv_results_file_name": "S1_S2_RR_not_equal.csv",  # For storing results as CSV
         "h5_parent_group_name": None,  # Useful for loop tool
         "update_sweep_params_before_init": False,
         "initialize_before_sweep": False, #!!!!!!!
@@ -54,42 +54,34 @@ def create_parameter_sweep_object(num_samples, num_procs, op_limits, var_lims):
 if __name__ == "__main__":
     num_samples = 6
     num_procs = 6
-    op_limts = {
+    op_limits = {
+        # What if instead of recovery bounds, I added a minimum brine flowrate to as the other limit, and then just find out what the recovery limit would be.
         "Stage 1": {
-            "RR_min": 0.55,
-            "RR_max": 0.62,
-            "Qin_min": 420 / 3600,
-            "Qin_max": 635 / 3600,
+            "Qout_min": 3*72/3600, # This limits will bound the flowrate for a given recovery.  Equal to 3 m3/hr * 72 Pressure Vessels per train
+            # "Qin_min": 520 / 3600, # So then what is bounding the recovery exactly?
+            # "Qin_max": 635 / 3600, # Based on pump limitation
         },
         "Stage 2": {
-            "RR_min": 0.55,
-            "RR_max": 0.62,
-            "Qin_min": 200 / 3600,
-            "Qin_max": 251 / 3600,
+            "Qout_min": 3*30/3600, 
+            # "Qin_min": 200 / 3600,
+            # "Qin_max": 251 / 3600, # This came from stage 1 min recovery of 55%
         },
         "Stage 3": {
-            "RR_min": 0.40,
-            "RR_max": 0.55,
-            "Qin_min": 75 / 3600,
-            "Qin_max": 126 / 3600,
+            "Qout_min": 3*15/3600, 
+            # "Qin_min": 75 / 3600,
+            # "Qin_max": 126 / 3600,
         },
     }
 
     var_lims = {
         "RR_lb": 0.88,
-        "RR_ub": 0.93,
+        "RR_ub": 0.925,
         "Qin_lb": 522 / 3600,  # m3/s
-        "Qin_ub": 635 / 3600,  # m3/s
+        "Qin_ub": 634 / 3600,  # m3/s
     }
-    # Tighter limits on flowrate and recovery
-    # var_lims = {
-    #     "RR_lb": 0.9,
-    #     "RR_ub": 0.92,
-    #     "Qin_lb": 602 / 3600,  # m3/s
-    #     "Qin_ub": 635 / 3600,  # m3/s
-    # }
+
     ps, kwargs_dict = create_parameter_sweep_object(
-        num_samples, num_procs, op_limts, var_lims
+        num_samples, num_procs, op_limits, var_lims
     )
 
     results_array, results_dict = ps.parameter_sweep(

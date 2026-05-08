@@ -80,7 +80,7 @@ def report_ports_with_multiple_arcs(model):
     return found_issue
 
 # Build flowsheet function
-def build_flowsheet(op_limts=None,scenario=None):
+def build_flowsheet(op_limits=None,scenario=None):
     m = ConcreteModel()
     m.fs = FlowsheetBlock(dynamic=False)
     m.fs.properties = NaClParameterBlock()
@@ -164,14 +164,16 @@ def build_flowsheet(op_limts=None,scenario=None):
     set_ro_train_op_conditions(m.fs.ro_train)
     # Set limits on each stage recovery and flowrate
     for i in m.fs.ro_train.stages:
-        m.fs.ro_train.stage[i].ro.unit.recovery_vol_phase[0, "Liq"].setlb(op_limts[f"Stage {i}"]["RR_min"])
-        m.fs.ro_train.stage[i].ro.unit.recovery_vol_phase[0, "Liq"].setub(op_limts[f"Stage {i}"]["RR_max"])
-        m.fs.ro_train.stage[i].feed.properties[0].flow_vol_phase["Liq"].setlb(
-            op_limts[f"Stage {i}"]["Qin_min"]
-        )
-        m.fs.ro_train.stage[i].feed.properties[0].flow_vol_phase["Liq"].setub(
-            op_limts[f"Stage {i}"]["Qin_max"]
-        )
+
+        # m.fs.ro_train.stage[i].feed.properties[0].flow_vol_phase["Liq"].setlb(
+        #     op_limits[f"Stage {i}"]["Qin_min"]
+        # )
+        # m.fs.ro_train.stage[i].feed.properties[0].flow_vol_phase["Liq"].setub(
+        #     op_limits[f"Stage {i}"]["Qin_max"]
+        # )
+        m.fs.ro_train.stage[i].disposal.properties[0].flow_vol_phase["Liq"].setlb(op_limits[f"Stage {i}"]["Qout_min"])
+        # m.fs.ro_train.stage[i].ro.unit.recovery_vol_phase[0, "Liq"].setlb(op_limits[f"Stage {i}"]["RR_min"])
+        # m.fs.ro_train.stage[i].ro.unit.recovery_vol_phase[0, "Liq"].setub(op_limits[f"Stage {i}"]["RR_max"])
     print(degrees_of_freedom(m)) # Should be zero.
     return m
 
@@ -266,9 +268,9 @@ def optimize(m, solver=None, check_termination=True):
     m.fs.ro_train.stage[1].pump.unit.control_volume.properties_out[0].pressure.unfix()
     m.fs.ro_train.stage[2].pump.unit.control_volume.properties_out[0].pressure.unfix()
     m.fs.ro_train.stage[3].pump.unit.control_volume.properties_out[0].pressure.unfix()
-    # But to make sure there are 0 DOF Assume S1 and S2 have same recovery and 
-    m.fs.ro_train.eq_recovery = Constraint(
-        expr= m.fs.ro_train.stage[1].ro.unit.recovery_vol_phase[0, "Liq"] == m.fs.ro_train.stage[2].ro.unit.recovery_vol_phase[0, "Liq"])   
+    # Reduce DOF by assume S1 and S2 have same recovery, which is about typical from data, but not necessarily optimal... 
+    # m.fs.ro_train.eq_recovery = Constraint(
+    #     expr= m.fs.ro_train.stage[1].ro.unit.recovery_vol_phase[0, "Liq"] == m.fs.ro_train.stage[2].ro.unit.recovery_vol_phase[0, "Liq"])   
     
     m.fs.obj = Objective(expr= m.fs.ro_train.total_pump_power, sense=minimize) # Dummy objective to trigger solve
 
@@ -297,6 +299,9 @@ def build_outputs(m):
     outputs["Stage1 Qin (m3/s)"] = m.fs.ro_train.stage[1].feed.properties[0].flow_vol_phase["Liq"]
     outputs["Stage2 Qin (m3/s)"] = m.fs.ro_train.stage[2].feed.properties[0].flow_vol_phase["Liq"]
     outputs["Stage3 Qin (m3/s)"] = m.fs.ro_train.stage[3].feed.properties[0].flow_vol_phase["Liq"]
+    outputs["Stage1 Brine (m3/s)"] = m.fs.ro_train.stage[1].disposal.properties[0].flow_vol_phase["Liq"]
+    outputs["Stage2 Brine (m3/s)"] = m.fs.ro_train.stage[2].disposal.properties[0].flow_vol_phase["Liq"]
+    outputs["Stage3 Brine (m3/s)"] = m.fs.ro_train.stage[3].disposal.properties[0].flow_vol_phase["Liq"]
 
     pump1 = _pump_unit(m.fs.ro_train.stage[1])
     pump2 = _pump_unit(m.fs.ro_train.stage[2])
@@ -323,6 +328,9 @@ def build_outputs(m):
     outputs["Stage1 Perm. Conc. (kg/m3)"] = m.fs.ro_train.stage[1].ro.unit.mixed_permeate[0].conc_mass_phase_comp["Liq", "NaCl"]
     outputs["Stage2 Perm. Conc. (kg/m3)"] = m.fs.ro_train.stage[2].ro.unit.mixed_permeate[0].conc_mass_phase_comp["Liq", "NaCl"]
     outputs["Stage3 Perm. Conc. (kg/m3)"] = m.fs.ro_train.stage[3].ro.unit.mixed_permeate[0].conc_mass_phase_comp["Liq", "NaCl"]
+    outputs["Stage1 Pump Speed (-)"] = pump1.design_speed_fraction
+    outputs["Stage2 Pump Speed (-)"] = pump2.design_speed_fraction
+    # outputs["Stage3 Pump Speed (-)"] = pump3.design_speed_fraction # Pump 3 has no speed fraction
 
     return outputs
 
