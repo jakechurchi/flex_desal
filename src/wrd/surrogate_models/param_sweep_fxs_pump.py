@@ -2,7 +2,16 @@ from watertap.core.solvers import get_solver
 from parameter_sweep import LinearSample, get_sweep_params_from_yaml
 from wrd.components.detailed_pump import *
 from models import HeadLoss
-from pyomo.environ import assert_optimal_termination, ConcreteModel, TransformationFactory, units as pyunits, Constraint, value, Objective, minimize
+from pyomo.environ import (
+    assert_optimal_termination,
+    ConcreteModel,
+    TransformationFactory,
+    units as pyunits,
+    Constraint,
+    value,
+    Objective,
+    minimize,
+)
 from pyomo.network import Arc
 from srp.utils import touch_flow_and_conc
 from idaes.models.unit_models import (
@@ -19,7 +28,7 @@ from idaes.core.util.model_diagnostics import DiagnosticsToolbox
 
 
 # Build flowsheet function
-def build_flowsheet(op_limts=None,scenario=None):
+def build_flowsheet(op_limts=None, scenario=None):
     m = ConcreteModel()
     m.fs = FlowsheetBlock(dynamic=False)
     m.fs.properties = NaClParameterBlock()
@@ -57,7 +66,7 @@ def build_flowsheet(op_limts=None,scenario=None):
         "flow_mass_phase_comp", 1e2, index=("Liq", "NaCl")
     )
 
-    add_pump_scaling(m.fs.pump)    
+    add_pump_scaling(m.fs.pump)
     calculate_scaling_factors(m)
 
     # Set feed and operational conditions
@@ -65,19 +74,20 @@ def build_flowsheet(op_limts=None,scenario=None):
     m.fs.pump.unit.control_volume.properties_in[0].pressure.setlb(0)
 
     m.fs.feed.properties.calculate_state(
-    var_args={
-        ("flow_vol_phase", ("Liq")): 3000 * pyunits.gallons / pyunits.minute,
-        ("conc_mass_phase_comp", ("Liq", "NaCl")): 0.5 * pyunits.g / pyunits.L,
-        ("pressure", None): 0.1 * pyunits.psi,
-        ("temperature", None): 298.15 * pyunits.K,
-    },
-    hold_state=True,
+        var_args={
+            ("flow_vol_phase", ("Liq")): 3000 * pyunits.gallons / pyunits.minute,
+            ("conc_mass_phase_comp", ("Liq", "NaCl")): 0.5 * pyunits.g / pyunits.L,
+            ("pressure", None): 0.1 * pyunits.psi,
+            ("temperature", None): 298.15 * pyunits.K,
+        },
+        hold_state=True,
     )
 
     set_pump_op_conditions(m.fs.pump)
-    print(degrees_of_freedom(m)) # Should be zero
+    print(degrees_of_freedom(m))  # Should be zero
 
     return m
+
 
 # Build sweep parameters function
 def build_sweep_params(
@@ -123,19 +133,22 @@ def initialize_model(m):
     assert_optimal_termination(results)
     return results
 
+
 # Optimizaiton function
 def optimize(m, solver=None, check_termination=True):
     print(f"Degrees of freedom start of optimize: {degrees_of_freedom(m)}")
     # Fix the mass fraction and unfix the flow mass so that the flow volume can be fixed by param sweep
     m.fs.feed.properties[0].mass_frac_phase_comp["Liq", "NaCl"].fix()
-    m.fs.feed.properties[0].flow_mass_phase_comp['Liq','H2O'].unfix()
-    m.fs.feed.properties[0].flow_mass_phase_comp['Liq','NaCl'].unfix()
-    
-    print(f"Degrees of freedom right before solve: {degrees_of_freedom(m)}") # Should be 0
+    m.fs.feed.properties[0].flow_mass_phase_comp["Liq", "H2O"].unfix()
+    m.fs.feed.properties[0].flow_mass_phase_comp["Liq", "NaCl"].unfix()
+
+    print(
+        f"Degrees of freedom right before solve: {degrees_of_freedom(m)}"
+    )  # Should be 0
     assert degrees_of_freedom(m) == 0
     # --solve---
     solver = get_solver()
-    results = solver.solve(m, tee = True)
+    results = solver.solve(m, tee=True)
     # assert_optimal_termination(results)
     return results
 
@@ -145,17 +158,18 @@ def build_outputs(m):
     outputs["Stage1 Power"] = m.fs.pump.unit.work_mechanical[0]
     return outputs
 
+
 if __name__ == "__main__":
     m = build_flowsheet(scenario=None)
     initialize_model(m)
     # Dummy version of fixing value
-    print(f"Degrees of freedom before fixing: {degrees_of_freedom(m)}") # Should be 0
+    print(f"Degrees of freedom before fixing: {degrees_of_freedom(m)}")  # Should be 0
     # Param Sweep will fix these two variables
     m.fs.feed.properties[0].flow_vol_phase["Liq"].fix(0.158)
 
     print(f"Degrees of freedom after fixing: {degrees_of_freedom(m)}")
     results = optimize(m)
-    
+
     dt = DiagnosticsToolbox(m)
     assert_optimal_termination(results)
     print(m.fs.pump.unit.work_mechanical[0]())

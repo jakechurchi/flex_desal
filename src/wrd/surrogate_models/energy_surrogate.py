@@ -42,12 +42,14 @@ Data = pd.read_csv(data_path)
 # Create PySMO Surrogate Model
 
 # Find the SEC
-Data['Feed Flow m3/hr'] = Data['Feed Flow'] * 3600
-Data['Total_Permeate_Flow_m3_s'] = Data['Recovery'] * Data['Feed Flow']
-Data['Specific Energy (kWh/m3)'] = Data['Total Power (W)'] / Data['Total_Permeate_Flow_m3_s'] / 3600 / 1000 
+Data["Feed Flow m3/hr"] = Data["Feed Flow"] * 3600
+Data["Total_Permeate_Flow_m3_s"] = Data["Recovery"] * Data["Feed Flow"]
+Data["Specific Energy (kWh/m3)"] = (
+    Data["Total Power (W)"] / Data["Total_Permeate_Flow_m3_s"] / 3600 / 1000
+)
 # Pull input and output data
-input_data = Data.iloc[:,[0,-3]] ## RR,feed flow
-output_data = Data.iloc[:,-1] # Specific Energy
+input_data = Data.iloc[:, [0, -3]]  ## RR,feed flow
+output_data = Data.iloc[:, -1]  # Specific Energy
 input_labels = [Data.columns[0], Data.columns[-3]]
 output_labels = [Data.columns[-1]]
 
@@ -66,7 +68,7 @@ RRmax = max(Data[input_labels[0]])
 flowmin = min(Data[input_labels[1]])
 flowmax = max(Data[input_labels[1]])
 
-input_bounds = {'Recovery': (RRmin, RRmax), 'Feed Flow m3/hr': (flowmin, flowmax)}
+input_bounds = {"Recovery": (RRmin, RRmax), "Feed Flow m3/hr": (flowmin, flowmax)}
 
 # Sample Data
 n_data = output_data.size
@@ -74,10 +76,8 @@ n_data = output_data.size
 # data_training, data_validation = split_training_validation(Data_Scaled, training_fraction, seed= n_data)
 # Create Surrogate
 trainer = PysmoPolyTrainer(
-    input_labels=input_labels, 
-    output_labels=output_labels,
-    training_dataframe = Data
-    )
+    input_labels=input_labels, output_labels=output_labels, training_dataframe=Data
+)
 trainer.config.maximum_polynomial_order = 2
 
 trained_surr = trainer.train_surrogate()
@@ -92,11 +92,11 @@ m.surrogate_blk = SurrogateBlock(concrete=True)
 m.surrogate = Surrogate
 m.surrogate_blk.build_model(
     m.surrogate,
-    input_vars=[m.recovery,m.flowrate],
+    input_vars=[m.recovery, m.flowrate],
     output_vars=[m.power],
 )
 m.surrogate_blk.pysmo_constraint.display()  # display()
-#m.surrogate_blk.pysmo_constraint["F_t"].pprint()
+# m.surrogate_blk.pysmo_constraint["F_t"].pprint()
 
 minx1, maxx1 = m.recovery.bounds
 minx2, maxx2 = m.flowrate.bounds
@@ -111,13 +111,15 @@ for i in range(num_points):
     for j in range(num_points):
         m.recovery.fix(x1_vals[i])
         m.flowrate.fix(x2_vals[j])
-        calculate_variable_from_constraint(m.power, m.surrogate_blk.pysmo_constraint["Specific Energy (kWh/m3)"])
+        calculate_variable_from_constraint(
+            m.power, m.surrogate_blk.pysmo_constraint["Specific Energy (kWh/m3)"]
+        )
         # m.surrogate_blk.display()
         # results = solver.solve(m, tee=True)
         # m.surrogate_blk.display()
         # print(m.flowrate.value, m.power.value)
         y_vals[i, j] = m.power.value
-    # assert False   
+    # assert False
 
 X1, X2 = np.meshgrid(x1_vals, x2_vals, indexing="ij")
 
@@ -137,7 +139,7 @@ ax.scatter(
 
 ax.set_xlabel("RR")
 ax.set_ylabel("Feed Flowrate (m3/hr)")
-ax.set_zlabel("Specific Energy (kWh/m3)") # Check units and scaling
+ax.set_zlabel("Specific Energy (kWh/m3)")  # Check units and scaling
 ax.set_title("Train Power Consumption Surrogate")
 ax.legend()
 
@@ -160,7 +162,9 @@ predicted_z = np.zeros_like(actual_z, dtype=float)
 for k, (x1, x2) in enumerate(zip(actual_x1, actual_x2)):
     m.recovery.fix(x1)
     m.flowrate.fix(x2)
-    calculate_variable_from_constraint(m.power, m.surrogate_blk.pysmo_constraint["Specific Energy (kWh/m3)"])
+    calculate_variable_from_constraint(
+        m.power, m.surrogate_blk.pysmo_constraint["Specific Energy (kWh/m3)"]
+    )
     predicted_z[k] = m.power.value
 
 denominator = np.where(np.abs(actual_z) > 1e-12, actual_z, np.nan)

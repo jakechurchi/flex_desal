@@ -38,7 +38,7 @@ def create_parameter_sweep_object(num_samples, num_procs, op_limits, var_lims):
         ),  # Store CSV next to this script
         "h5_parent_group_name": None,  # Useful for loop tool
         "update_sweep_params_before_init": False,
-        "initialize_before_sweep": False, #!!!!!!!
+        "initialize_before_sweep": False,  #!!!!!!!
         "reinitialize_function": None,
         "reinitialize_kwargs": {},
         "reinitialize_before_sweep": False,
@@ -54,23 +54,26 @@ def create_parameter_sweep_object(num_samples, num_procs, op_limits, var_lims):
     ps = ParameterSweep(**kwargs_dict)
     return ps, kwargs_dict
 
+
 if __name__ == "__main__":
     num_samples = 6
     num_procs = 6
     op_limits = {
         # What if instead of recovery bounds, I added a minimum brine flowrate to as the other limit, and then just find out what the recovery limit would be.
         "Stage 1": {
-            "Qout_min": 3*72/3600, # This limits will bound the flowrate for a given recovery.  Equal to 3 m3/hr * 72 Pressure Vessels per train
+            "Qout_min": 3
+            * 72
+            / 3600,  # This limits will bound the flowrate for a given recovery.  Equal to 3 m3/hr * 72 Pressure Vessels per train
             # "Qin_min": 520 / 3600, # So then what is bounding the recovery exactly?
             # "Qin_max": 635 / 3600, # Based on pump limitation
         },
         "Stage 2": {
-            "Qout_min": 3*30/3600, 
+            "Qout_min": 3 * 30 / 3600,
             # "Qin_min": 200 / 3600,
             # "Qin_max": 251 / 3600, # This came from stage 1 min recovery of 55%
         },
         "Stage 3": {
-            "Qout_min": 3*15/3600, 
+            "Qout_min": 3 * 15 / 3600,
             # "Qin_min": 75 / 3600,
             # "Qin_max": 126 / 3600,
         },

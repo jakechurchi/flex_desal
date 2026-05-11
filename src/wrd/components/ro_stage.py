@@ -294,10 +294,10 @@ if __name__ == "__main__":
     # run_august_stages()
     # run_march_stages()
     m = main(
-        Qin=396*.29/.25,  # gpm?
+        Qin=396 * 0.29 / 0.25,  # gpm?
         Cin=2.58,
         Tin=295,
-        Pin= 100 * pyunits.psi,
+        Pin=100 * pyunits.psi,
         stage_num=3,
         file="wrd_inputs_8_19_21.yaml",
     )
