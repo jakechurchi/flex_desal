@@ -52,12 +52,12 @@ def create_parameter_sweep_object(num_samples, num_procs, var_lims):
     return ps, kwargs_dict
 
 if __name__ == "__main__":
-    num_samples = 10
+    num_samples = 15
     num_procs = 1
     var_lims = {
         "Feed Flow": {
-            "Qin_min": 520 / 3600,  # m3/s
-            "Qin_max": 910 / 3600,  # m3/s
+            "Qin_min": 344 / 3600,  # m3/s
+            "Qin_max": 989 / 3600,  # m3/s
         }
     }
     ps, kwargs_dict = create_parameter_sweep_object(num_samples, num_procs, var_lims)

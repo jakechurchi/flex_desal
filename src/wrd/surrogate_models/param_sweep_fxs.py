@@ -164,7 +164,6 @@ def build_flowsheet(op_limits=None,scenario=None):
     set_ro_train_op_conditions(m.fs.ro_train)
     # Set limits on each stage recovery and flowrate
     for i in m.fs.ro_train.stages:
-
         # m.fs.ro_train.stage[i].feed.properties[0].flow_vol_phase["Liq"].setlb(
         #     op_limits[f"Stage {i}"]["Qin_min"]
         # )

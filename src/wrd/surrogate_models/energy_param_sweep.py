@@ -1,4 +1,5 @@
 # Imports
+from pathlib import Path
 from pprint import pprint
 from IPython import get_ipython
 from watertap.core.solvers import get_solver
@@ -32,7 +33,9 @@ def create_parameter_sweep_object(num_samples, num_procs, op_limits, var_lims):
         "parallel_back_end": "MultiProcessing",  # ConcurrentFutures, MPI, Ray available
         "number_of_subprocesses": num_procs,
         # Additional useful keyword arguments
-        "csv_results_file_name": "S1_S2_RR_not_equal.csv",  # For storing results as CSV
+        "csv_results_file_name": str(
+            Path(__file__).resolve().parent / "S1_S2_RR_not_equal.csv"
+        ),  # Store CSV next to this script
         "h5_parent_group_name": None,  # Useful for loop tool
         "update_sweep_params_before_init": False,
         "initialize_before_sweep": False, #!!!!!!!

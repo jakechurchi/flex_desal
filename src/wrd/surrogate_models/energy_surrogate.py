@@ -36,15 +36,20 @@ from watertap.core.solvers import get_solver
 current_script_path = os.path.abspath(__file__)
 # Get the directory containing the current script
 current_directory = os.path.dirname(current_script_path)
-filename = "ro_sweep_brine_lim.csv"
+filename = "S1_S2_RR_not_equal.csv"
 data_path = os.path.join(current_directory, filename)
 Data = pd.read_csv(data_path)
 # Create PySMO Surrogate Model
 
-input_data = Data.iloc[:,0:1] ## RR,feed flow
-output_data = Data.iloc[:,17] #Check exact colum number for total power
-input_labels = [Data.columns[0], Data.columns[1]]
-output_labels = [Data.columns[17]]#Check exact colum number for total power
+# Find the SEC
+Data['Feed Flow m3/hr'] = Data['Feed Flow'] * 3600
+Data['Total_Permeate_Flow_m3_s'] = Data['Recovery'] * Data['Feed Flow']
+Data['Specific Energy (kWh/m3)'] = Data['Total Power (W)'] / Data['Total_Permeate_Flow_m3_s'] / 3600 / 1000 
+# Pull input and output data
+input_data = Data.iloc[:,[0,-3]] ## RR,feed flow
+output_data = Data.iloc[:,-1] # Specific Energy
+input_labels = [Data.columns[0], Data.columns[-3]]
+output_labels = [Data.columns[-1]]
 
 # Remove the rows with nan values
 Data = Data.dropna(subset=output_labels)
@@ -53,16 +58,15 @@ Data = Data.dropna(subset=output_labels)
 assert pd.to_numeric(Data[input_labels[0]], errors="coerce").notnull().all()
 assert pd.to_numeric(Data[output_labels[0]], errors="coerce").notnull().all()
 
-# Scale Data
-Data_Scaled = Data.copy()
-# Change this as appropriate
-Data_Scaled[output_labels[0]] = Data[output_labels[0]].mul(1e-5) # Power is in W, scale down
-RRmin = min(Data_Scaled[input_labels[0]])
-RRmax = max(Data_Scaled[input_labels[0]])
-flowmin = min(Data_Scaled[input_labels[1]])
-flowmax = max(Data_Scaled[input_labels[1]])
+# No need to scale data
 
-input_bounds = {'Recovery': (RRmin, RRmax), 'Feed Flow': (flowmin, flowmax)}
+# Change this as appropriate
+RRmin = min(Data[input_labels[0]])
+RRmax = max(Data[input_labels[0]])
+flowmin = min(Data[input_labels[1]])
+flowmax = max(Data[input_labels[1]])
+
+input_bounds = {'Recovery': (RRmin, RRmax), 'Feed Flow m3/hr': (flowmin, flowmax)}
 
 # Sample Data
 n_data = output_data.size
@@ -72,7 +76,7 @@ n_data = output_data.size
 trainer = PysmoPolyTrainer(
     input_labels=input_labels, 
     output_labels=output_labels,
-    training_dataframe = Data_Scaled
+    training_dataframe = Data
     )
 trainer.config.maximum_polynomial_order = 2
 
@@ -107,7 +111,7 @@ for i in range(num_points):
     for j in range(num_points):
         m.recovery.fix(x1_vals[i])
         m.flowrate.fix(x2_vals[j])
-        calculate_variable_from_constraint(m.power, m.surrogate_blk.pysmo_constraint["Total Power (W)"])
+        calculate_variable_from_constraint(m.power, m.surrogate_blk.pysmo_constraint["Specific Energy (kWh/m3)"])
         # m.surrogate_blk.display()
         # results = solver.solve(m, tee=True)
         # m.surrogate_blk.display()
@@ -122,9 +126,9 @@ ax = fig.add_subplot(111, projection="3d")
 ax.plot_surface(X1, X2, y_vals, cmap="viridis", alpha=0.85)
 # ax.scatter(X1.ravel(), X2.ravel(), y_vals.ravel(), c="r", s=12, label="Predicted")
 ax.scatter(
-    Data_Scaled[input_labels[0]],
-    Data_Scaled[input_labels[1]],
-    Data_Scaled[output_labels[0]],
+    Data[input_labels[0]],
+    Data[input_labels[1]],
+    Data[output_labels[0]],
     c="r",
     s=18,
     alpha=0.85,
@@ -132,8 +136,8 @@ ax.scatter(
 )
 
 ax.set_xlabel("RR")
-ax.set_ylabel("Feed Flowrate (m3/s)")
-ax.set_zlabel("Power (scaled)") # Check units and scaling
+ax.set_ylabel("Feed Flowrate (m3/hr)")
+ax.set_zlabel("Specific Energy (kWh/m3)") # Check units and scaling
 ax.set_title("Train Power Consumption Surrogate")
 ax.legend()
 
@@ -148,15 +152,15 @@ ax.legend()
 plt.show()
 
 # Residual plot at actual data points: percent difference = 100 * (surrogate - actual) / actual
-actual_x1 = Data_Scaled[input_labels[0]].to_numpy()
-actual_x2 = Data_Scaled[input_labels[1]].to_numpy()
-actual_z = Data_Scaled[output_labels[0]].to_numpy()
+actual_x1 = Data[input_labels[0]].to_numpy()
+actual_x2 = Data[input_labels[1]].to_numpy()
+actual_z = Data[output_labels[0]].to_numpy()
 predicted_z = np.zeros_like(actual_z, dtype=float)
 
 for k, (x1, x2) in enumerate(zip(actual_x1, actual_x2)):
     m.recovery.fix(x1)
     m.flowrate.fix(x2)
-    calculate_variable_from_constraint(m.power, m.surrogate_blk.pysmo_constraint["Total Power (W)"])
+    calculate_variable_from_constraint(m.power, m.surrogate_blk.pysmo_constraint["Specific Energy (kWh/m3)"])
     predicted_z[k] = m.power.value
 
 denominator = np.where(np.abs(actual_z) > 1e-12, actual_z, np.nan)
@@ -174,13 +178,12 @@ res_scatter = ax_res.scatter(
     s=24,
 )
 ax_res.set_xlabel("RR")
-ax_res.set_ylabel("Feed Flowrate (m3/s)")
+ax_res.set_ylabel("Feed Flowrate (m3/hr)")
 ax_res.set_zlabel("Percent Difference (%)")
 ax_res.set_title("Surrogate Percent Difference at Actual Data Points")
 fig_res.colorbar(res_scatter, ax=ax_res, shrink=0.7, label="Percent Difference (%)")
 plt.show()
 
-
 # Save Surrogate
-surr_name = f"ro_power_poly_fit_order_{trainer.config.maximum_polynomial_order}.json"
+surr_name = f"ro_SEC_poly_fit_order_{trainer.config.maximum_polynomial_order}.json"
 Surrogate.save_to_file(os.path.join(current_directory, surr_name), overwrite=True)
