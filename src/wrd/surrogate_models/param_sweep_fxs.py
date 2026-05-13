@@ -152,6 +152,14 @@ def build_flowsheet(op_limits=None, scenario=None):
 
     TransformationFactory("network.expand_arcs").apply_to(m)
 
+    # Below are a few different options to address the issue of negative 3rd stage power
+    # Add a lower bound on the stage 3 pump work
+    m.fs.ro_train.stage[3].pump.unit.work_mechanical[0].setlb(0)
+    # Increase the pump efficiency so stage 2 isn't so heavily favored
+    m.fs.ro_train.stage[3].pump.unit.efficiency_pump.fix(0.7)
+    #Provide a lower bound on the third stage recovery
+    # m.fs.ro_train.stage[3].ro.unit.recovery_vol_phase[0,'Liq'].setlb(.5)
+
     m.fs.properties.set_default_scaling(
         "flow_mass_phase_comp", 1e-1, index=("Liq", "H2O")  # changed from 1
     )
@@ -241,10 +249,14 @@ def initialize_model(m):
     a = blk.find_component("feed_to_stage_1")
     propagate_state(a)
     initialize_ro_stage(blk.stage[1])
+    a = blk.find_component("stage_1_to_product")
+    propagate_state(a)
     a = blk.find_component("stage_1_to_stage_2")
     propagate_state(a)
     initialize_ro_stage(blk.stage[2])
     a = blk.find_component("stage_2_to_tsro_header")
+    propagate_state(a)
+    a = blk.find_component("stage_2_to_product")
     propagate_state(a)
     blk.tsro_header.initialize()
     a = blk.find_component("tsro_header_to_stage_3")
@@ -254,8 +266,8 @@ def initialize_model(m):
     propagate_state(a)
     a = blk.find_component("stage_3_to_brine")
     propagate_state(a)
-    a = blk.find_component("stage_3_to_product")
-    propagate_state(a)
+    # a = blk.find_component("stage_3_to_product")
+    # propagate_state(a)
     blk.mixer.initialize()
     propagate_state(blk.mixer_to_product)
     blk.product.initialize()
@@ -292,6 +304,8 @@ def optimize(m, solver=None, check_termination=True):
     # m.fs.ro_train.eq_recovery = Constraint(
     #     expr= m.fs.ro_train.stage[1].ro.unit.recovery_vol_phase[0, "Liq"] == m.fs.ro_train.stage[2].ro.unit.recovery_vol_phase[0, "Liq"])
 
+
+
     m.fs.obj = Objective(
         expr=m.fs.ro_train.total_pump_power, sense=minimize
     )  # Dummy objective to trigger solve
@@ -302,11 +316,17 @@ def optimize(m, solver=None, check_termination=True):
     # assert degrees_of_freedom(m) == 0
     # --solve---
     solver = get_solver()
-    results = solver.solve(m, tee=True)
-    if assert_optimal_termination(results):
-        print("-----FAILED TO OPTIMALLY SOLVE-----")
+    try:
+        results = solver.solve(m, tee=True)
+        assert_optimal_termination(results)
+    except Exception as e:
+        print("-----FAILED TO SOLVE-----")
+        print(f"Exception: {e}")
         print(f"RR = {m.fs.ro_train.stage[1].ro.unit.recovery_vol_phase[0, 'Liq']()}%")
         print(f"Qin = {m.fs.feed.properties[0].flow_vol_phase['Liq']()}")
+        dt = DiagnosticsToolbox(m)
+        dt.report_numerical_issues()
+        dt.display_constraints_with_large_residuals()
     return results
 
 
@@ -392,34 +412,33 @@ def build_outputs(m):
 
 
 if __name__ == "__main__":
-    op_limts = {
+    op_limits = {
+        # What if instead of recovery bounds, I added a minimum brine flowrate to as the other limit, and then just find out what the recovery limit would be.
         "Stage 1": {
-            "RR_min": 0.55,
-            "RR_max": 0.62,
-            "Qin_min": 420 / 3600,  # m/hr
-            "Qin_max": 635 / 3600,
+            "Qout_min": 3 * 72 / 3600,  # This limits will bound the flowrate for a given recovery.  Equal to 3 m3/hr * 72 Pressure Vessels per train
+            # "Qin_min": 520 / 3600, # So then what is bounding the recovery exactly?
+            # "Qin_max": 635 / 3600, # Based on pump limitation
         },
         "Stage 2": {
-            "RR_min": 0.55,
-            "RR_max": 0.62,
-            "Qin_min": 200 / 3600,
-            "Qin_max": 251 / 3600,
+            "Qout_min": 3 * 30 / 3600,
+            # "Qin_min": 200 / 3600,
+            # "Qin_max": 251 / 3600, # This came from stage 1 min recovery of 55%
         },
         "Stage 3": {
-            "RR_min": 0.40,
-            "RR_max": 0.55,
-            "Qin_min": 75 / 3600,
-            "Qin_max": 126 / 3600,
+            "Qout_min": 3 * 15 / 3600,
+            # "Qin_min": 75 / 3600,
+            # "Qin_max": 126 / 3600,
         },
     }
-    m = build_flowsheet(op_limts=op_limts, scenario=None)
+
+    m = build_flowsheet(op_limits=op_limits, scenario=None)
     initialize_model(m)
     # Dummy version of fixing value
     print(f"Degrees of freedom before fixing: {degrees_of_freedom(m)}")  # Should be 0
     # Param Sweep will fix these two variables
-    m.fs.ro_train.recovery_vol.fix(0.9)
-    m.fs.feed.properties[0].flow_vol_phase["Liq"].fix(0.158)
-
+    m.fs.ro_train.recovery_vol.fix(0.925)
+    m.fs.feed.properties[0].flow_vol_phase["Liq"].fix(0.145)
+    # m.fs.ro_train.stage[3].ro.unit.recovery_flow_vol[0,'Liq'].setlb(.5)
     print(f"Degrees of freedom after fixing: {degrees_of_freedom(m)}")
     results = optimize(m)
 

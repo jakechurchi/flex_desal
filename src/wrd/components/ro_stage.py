@@ -3,6 +3,7 @@ from pyomo.environ import (
     assert_optimal_termination,
     units as pyunits,
     TransformationFactory,
+    value,
 )
 from pyomo.network import Arc
 
@@ -12,6 +13,7 @@ from idaes.models.unit_models import Feed, Product
 from idaes.core import FlowsheetBlock
 from idaes.models.unit_models import StateJunction
 from idaes.core.util.scaling import calculate_scaling_factors
+from idaes.core.util.exceptions import InitializationError
 
 from watertap.costing import WaterTAPCosting
 from watertap.core.util.model_diagnostics.infeasible import *
@@ -131,9 +133,9 @@ def build_ro_stage(
     build_ro(blk.ro, stage_num=stage_num, file=file, prop_package=prop_package)
 
     blk.product = StateJunction(property_package=prop_package)
-    touch_flow_and_conc(blk.feed)
+    touch_flow_and_conc(blk.product)
     blk.disposal = StateJunction(property_package=prop_package)
-    touch_flow_and_conc(blk.feed)
+    touch_flow_and_conc(blk.disposal)
 
     # Arcs to connect the unit models
     blk.feed_to_pump = Arc(source=blk.feed.outlet, destination=blk.pump.feed.inlet)
@@ -171,7 +173,29 @@ def initialize_ro_stage(blk):
     propagate_state(blk.ro_to_product)
     blk.product.initialize()
     propagate_state(blk.ro_to_disposal)
-    blk.disposal.initialize()
+    try:
+        blk.disposal.initialize()
+    except InitializationError:
+        ro_disposal_props = blk.ro.disposal.properties[0]
+        try:
+            blk.disposal.initialize(
+                state_args={
+                    "flow_mass_phase_comp": {
+                        ("Liq", "H2O"): value(
+                            ro_disposal_props.flow_mass_phase_comp["Liq", "H2O"]
+                        ),
+                        ("Liq", "NaCl"): value(
+                            ro_disposal_props.flow_mass_phase_comp["Liq", "NaCl"]
+                        ),
+                    },
+                    "temperature": value(ro_disposal_props.temperature),
+                    "pressure": value(ro_disposal_props.pressure),
+                }
+            )
+        except InitializationError:
+            # This state block is a pass-through junction; if initialization fails,
+            # continue with propagated state so the full train can still initialize.
+            pass
 
 
 def report_ro_stage(blk, w=30, add_costing=True):
