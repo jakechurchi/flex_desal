@@ -36,7 +36,7 @@ from watertap.core.solvers import get_solver
 current_script_path = os.path.abspath(__file__)
 # Get the directory containing the current script
 current_directory = os.path.dirname(current_script_path)
-filename = "S1_S2_RR_not_equal.csv"
+filename = "ro_sweep_USED_IN_PT.csv"
 data_path = os.path.join(current_directory, filename)
 Data = pd.read_csv(data_path)
 # Create PySMO Surrogate Model

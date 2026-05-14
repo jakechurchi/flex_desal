@@ -34,7 +34,7 @@ def create_parameter_sweep_object(num_samples, num_procs, op_limits, var_lims):
         "number_of_subprocesses": num_procs,
         # Additional useful keyword arguments
         "csv_results_file_name": str(
-            Path(__file__).resolve().parent / "S3_70_eff_sweep.csv"
+            Path(__file__).resolve().parent / "ro_sweep_USED_IN_PT.csv"
         ),  # Store CSV next to this script
         "h5_parent_group_name": None,  # Useful for loop tool
         "update_sweep_params_before_init": False,
@@ -78,7 +78,7 @@ if __name__ == "__main__":
     }
 
     var_lims = {
-        "RR_lb": 0.88,
+        "RR_lb": 0.89,
         "RR_ub": 0.925,
         "Qin_lb": 522 / 3600,  # m3/s
         "Qin_ub": 634 / 3600,  # m3/s
