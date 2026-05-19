@@ -61,7 +61,9 @@ if __name__ == "__main__":
     op_limits = {
         # What if instead of recovery bounds, I added a minimum brine flowrate to as the other limit, and then just find out what the recovery limit would be.
         "Stage 1": {
-            "Qout_min": 3 * 72 / 3600,  # This limits will bound the flowrate for a given recovery.  Equal to 3 m3/hr * 72 Pressure Vessels per train            / 3600,  # This limits will bound the flowrate for a given recovery.  Equal to 3 m3/hr * 72 Pressure Vessels per train
+            "Qout_min": 3
+            * 72
+            / 3600,  # This limits will bound the flowrate for a given recovery.  Equal to 3 m3/hr * 72 Pressure Vessels per train            / 3600,  # This limits will bound the flowrate for a given recovery.  Equal to 3 m3/hr * 72 Pressure Vessels per train
             # "Qin_min": 520 / 3600, # So then what is bounding the recovery exactly?
             # "Qin_max": 635 / 3600, # Based on pump limitation
         },
