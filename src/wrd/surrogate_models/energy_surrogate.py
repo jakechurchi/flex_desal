@@ -78,7 +78,7 @@ n_data = output_data.size
 trainer = PysmoPolyTrainer(
     input_labels=input_labels, output_labels=output_labels, training_dataframe=Data
 )
-trainer.config.maximum_polynomial_order = 2
+trainer.config.maximum_polynomial_order = 1
 
 trained_surr = trainer.train_surrogate()
 Surrogate = PysmoSurrogate(trained_surr, input_labels, output_labels, input_bounds)
@@ -122,26 +122,36 @@ for i in range(num_points):
     # assert False
 
 X1, X2 = np.meshgrid(x1_vals, x2_vals, indexing="ij")
+x_curve = np.linspace(minx1, maxx1, num=100)
+y_curve = 45/(1-x_curve)
 
-fig = plt.figure()
-ax = fig.add_subplot(111, projection="3d")
-ax.plot_surface(X1, X2, y_vals, cmap="viridis", alpha=0.85)
-# ax.scatter(X1.ravel(), X2.ravel(), y_vals.ravel(), c="r", s=12, label="Predicted")
-ax.scatter(
+fig = plt.figure(figsize=(10, 8))
+ax = fig.add_subplot(111)
+contour = ax.contourf(X1, X2, y_vals, levels=20, cmap="viridis", alpha=0.85)
+# Overlay actual data points
+scatter = ax.scatter(
     Data[input_labels[0]],
     Data[input_labels[1]],
-    Data[output_labels[0]],
-    c="r",
-    s=18,
-    alpha=0.85,
-    label="Actual Data",
+    c="black",
+    s=80,
+    alpha=0.9,
+    marker="o",
+    edgecolors="black",
+    linewidth=1.5,
+    label="Param. Sweep Points",
 )
 
-ax.set_xlabel("RR")
-ax.set_ylabel("Feed Flowrate (m3/hr)")
-ax.set_zlabel("Specific Energy (kWh/m3)")  # Check units and scaling
-ax.set_title("Train Power Consumption Surrogate")
-ax.legend()
+# Plot constraint curve
+ax.plot(x_curve, y_curve, 'r-', linewidth=2.5, label='Minimum Recovery Constraint')
+
+ax.set_xlabel("RR", fontsize=14)
+ax.set_ylabel("Feed Flowrate (m$^3$/hr)", fontsize=14)
+ax.set_ylim(flowmin, flowmax)
+ax.set_title("Train Power Consumption Surrogate", fontsize=14)
+cbar = fig.colorbar(contour, ax=ax, label="Specific Energy (kWh/m$^3$)")
+cbar.ax.tick_params(labelsize=14)
+ax.tick_params(labelsize=14)
+ax.legend(fontsize=14)
 
 # Optionally Show the validation data
 # small_val_data = data_validation.sample(n=num_points*2)
@@ -171,21 +181,30 @@ denominator = np.where(np.abs(actual_z) > 1e-12, actual_z, np.nan)
 percent_diff = 100.0 * (predicted_z - actual_z) / denominator
 valid_mask = np.isfinite(percent_diff)
 
-fig_res = plt.figure()
-ax_res = fig_res.add_subplot(111, projection="3d")
-res_scatter = ax_res.scatter(
+fig_res = plt.figure(figsize=(10, 8))
+ax_res = fig_res.add_subplot(111)
+
+scatter_res = ax_res.scatter(
     actual_x1[valid_mask],
     actual_x2[valid_mask],
-    percent_diff[valid_mask],
     c=percent_diff[valid_mask],
+    s=80,
+    alpha=0.9,
+    marker="o",
+    edgecolors="black",
+    linewidth=1.5,
     cmap="coolwarm",
-    s=24,
 )
-ax_res.set_xlabel("RR")
-ax_res.set_ylabel("Feed Flowrate (m3/hr)")
-ax_res.set_zlabel("Percent Difference (%)")
-ax_res.set_title("Surrogate Percent Difference at Actual Data Points")
-fig_res.colorbar(res_scatter, ax=ax_res, shrink=0.7, label="Percent Difference (%)")
+
+ax_res.set_xlabel("RR", fontsize=14)
+ax_res.set_ylabel("Feed Flowrate (m$^3$/hr)", fontsize=14)
+ax_res.set_title("Surrogate Percent Difference from Data Points", fontsize=14)
+cbar_res = fig_res.colorbar(
+    scatter_res, ax=ax_res, label="Percent Difference (%)"
+)
+cbar_res.ax.tick_params(labelsize=14)
+ax_res.tick_params(labelsize=14)
+ax_res.legend(fontsize=14)
 plt.show()
 
 # Save Surrogate
