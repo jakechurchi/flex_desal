@@ -4,7 +4,7 @@ from pprint import pprint
 from IPython import get_ipython
 from watertap.core.solvers import get_solver
 from parameter_sweep import ParameterSweep
-from wrd.surrogate_models.param_sweep_fxs import (
+from wrd.surrogate_models.param_sweep_fxs_ro_train import (
     optimize,
     build_flowsheet,
     build_sweep_params,

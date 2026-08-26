@@ -1,5 +1,5 @@
 from watertap.core.solvers import get_solver
-from parameter_sweep import LinearSample, get_sweep_params_from_yaml
+from parameter_sweep import LinearSample
 from wrd.components.detailed_pump import *
 from models import HeadLoss
 from pyomo.environ import (
@@ -7,10 +7,6 @@ from pyomo.environ import (
     ConcreteModel,
     TransformationFactory,
     units as pyunits,
-    Constraint,
-    value,
-    Objective,
-    minimize,
 )
 from pyomo.network import Arc
 from srp.utils import touch_flow_and_conc
@@ -26,9 +22,16 @@ from idaes.core.util.model_statistics import degrees_of_freedom
 from wrd.utilities import *
 from idaes.core.util.model_diagnostics import DiagnosticsToolbox
 
+__all__ = [
+    "build_flowsheet",
+    "build_sweep_params",
+    "initialize_model",
+    "optimize",
+    "build_outputs",
+]
 
 # Build flowsheet function
-def build_flowsheet(op_limts=None, scenario=None):
+def build_flowsheet(op_limits=None, scenario=None):
     m = ConcreteModel()
     m.fs = FlowsheetBlock(dynamic=False)
     m.fs.properties = NaClParameterBlock()
@@ -158,7 +161,7 @@ def build_outputs(m):
     outputs["Stage1 Power"] = m.fs.pump.unit.work_mechanical[0]
     return outputs
 
-
+# Debugging
 if __name__ == "__main__":
     m = build_flowsheet(scenario=None)
     initialize_model(m)

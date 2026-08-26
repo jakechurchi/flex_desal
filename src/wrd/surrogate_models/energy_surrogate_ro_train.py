@@ -3,29 +3,18 @@ import numpy as np
 import os
 
 from pyomo.environ import (
-    Param,
     Var,
-    value,
     units as pyunits,
     ConcreteModel,
 )
 
 from idaes.core.surrogate.pysmo_surrogate import (
-    PysmoRBFTrainer,
     PysmoPolyTrainer,
     PysmoSurrogate,
 )
-from idaes.core.surrogate.sampling.data_utils import (
-    split_training_validation,
-)  # Yes, it's a random split
-from idaes.core.surrogate.plotting.sm_plotter import (
-    surrogate_scatter2D,
-    surrogate_parity,
-    surrogate_residual,
-)
+
 from idaes.core.util.scaling import calculate_variable_from_constraint
 
-from idaes.core.surrogate.pysmo.sampling import LatinHypercubeSampling
 from idaes.core.surrogate.surrogate_block import SurrogateBlock
 from matplotlib import pyplot as plt
 from watertap.core.solvers import get_solver

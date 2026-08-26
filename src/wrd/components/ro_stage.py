@@ -173,29 +173,31 @@ def initialize_ro_stage(blk):
     propagate_state(blk.ro_to_product)
     blk.product.initialize()
     propagate_state(blk.ro_to_disposal)
-    try:
-        blk.disposal.initialize()
-    except InitializationError:
-        ro_disposal_props = blk.ro.disposal.properties[0]
-        try:
-            blk.disposal.initialize(
-                state_args={
-                    "flow_mass_phase_comp": {
-                        ("Liq", "H2O"): value(
-                            ro_disposal_props.flow_mass_phase_comp["Liq", "H2O"]
-                        ),
-                        ("Liq", "NaCl"): value(
-                            ro_disposal_props.flow_mass_phase_comp["Liq", "NaCl"]
-                        ),
-                    },
-                    "temperature": value(ro_disposal_props.temperature),
-                    "pressure": value(ro_disposal_props.pressure),
-                }
-            )
-        except InitializationError:
-            # This state block is a pass-through junction; if initialization fails,
-            # continue with propagated state so the full train can still initialize.
-            pass
+    blk.disposal.initialize()
+
+    # try:
+    #     blk.disposal.initialize()
+    # except InitializationError:
+    #     ro_disposal_props = blk.ro.disposal.properties[0]
+    #     try:
+    #         blk.disposal.initialize(
+    #             state_args={
+    #                 "flow_mass_phase_comp": {
+    #                     ("Liq", "H2O"): value(
+    #                         ro_disposal_props.flow_mass_phase_comp["Liq", "H2O"]
+    #                     ),
+    #                     ("Liq", "NaCl"): value(
+    #                         ro_disposal_props.flow_mass_phase_comp["Liq", "NaCl"]
+    #                     ),
+    #                 },
+    #                 "temperature": value(ro_disposal_props.temperature),
+    #                 "pressure": value(ro_disposal_props.pressure),
+    #             }
+    #         )
+    #     except InitializationError:
+    #         # This state block is a pass-through junction; if initialization fails,
+    #         # continue with propagated state so the full train can still initialize.
+    #         pass
 
 
 def report_ro_stage(blk, w=30, add_costing=True):

@@ -3,7 +3,7 @@ from pprint import pprint
 from IPython import get_ipython
 from watertap.core.solvers import get_solver
 from parameter_sweep import ParameterSweep
-from wrd.surrogate_models.param_sweep_fxs_pump import (
+from wrd.surrogate_models.param_sweep_fxs_uf_pump import (
     optimize,
     build_flowsheet,
     build_sweep_params,

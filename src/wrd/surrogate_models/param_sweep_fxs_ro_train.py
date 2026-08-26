@@ -1,5 +1,5 @@
 from watertap.core.solvers import get_solver
-from parameter_sweep import LinearSample, get_sweep_params_from_yaml
+from parameter_sweep import LinearSample
 from wrd.components.ro_stage import initialize_ro_stage
 from wrd.components.ro_train import *
 from models import HeadLoss
@@ -8,7 +8,6 @@ from pyomo.environ import (
     ConcreteModel,
     TransformationFactory,
     units as pyunits,
-    Constraint,
     value,
     Objective,
     minimize,
@@ -27,8 +26,16 @@ from idaes.core.util.model_statistics import degrees_of_freedom
 from wrd.utilities import *
 from idaes.core.util.model_diagnostics import DiagnosticsToolbox
 
+__all__ = [
+    "build_flowsheet",
+    "build_sweep_params",
+    "initialize_model",
+    "optimize",
+    "build_outputs",
+]
 
-# Debugging
+
+# Debugging Tool
 def print_arcs_to_port(model, port, port_name=""):
     """Print all arcs connected to a given port (as source or destination)"""
     from pyomo.network import Arc
@@ -408,7 +415,7 @@ def build_outputs(m):
 
     return outputs
 
-
+# Debugging
 if __name__ == "__main__":
     op_limits = {
         # What if instead of recovery bounds, I added a minimum brine flowrate to as the other limit, and then just find out what the recovery limit would be.
