@@ -416,77 +416,59 @@ def build_outputs(m):
 # Debugging
 if __name__ == "__main__":
     op_limits = {
-        # What if instead of recovery bounds, I added a minimum brine flowrate to as the other limit, and then just find out what the recovery limit would be.
         "Stage 1": {
             "Qout_min": 3
             * 72
             / 3600,  # This limits will bound the flowrate for a given recovery.  Equal to 3 m3/hr * 72 Pressure Vessels per train
-            # "Qin_min": 520 / 3600, # So then what is bounding the recovery exactly?
             # "Qin_max": 635 / 3600, # Based on pump limitation
         },
         "Stage 2": {
             "Qout_min": 3 * 30 / 3600,
-            # "Qin_min": 200 / 3600,
             # "Qin_max": 251 / 3600, # This came from stage 1 min recovery of 55%
         },
         "Stage 3": {
             "Qout_min": 3 * 15 / 3600,
-            # "Qin_min": 75 / 3600,
             # "Qin_max": 126 / 3600,
         },
     }
 
     m = build_flowsheet(op_limits=op_limits, scenario=None)
     initialize_model(m)
+
     # Dummy version of fixing value
-    print(f"Degrees of freedom before fixing: {degrees_of_freedom(m)}")  # Should be 0
-    # Param Sweep will fix these two variables
+    print(f"Degrees of freedom before fixing: {degrees_of_freedom(m)}")
+
+    # Param Sweep will fix these two variables. This is the maximum of both flowrate and recovery
     m.fs.ro_train.recovery_vol.fix(0.925)
-    m.fs.feed.properties[0].flow_vol_phase["Liq"].fix(0.145)
-    # m.fs.ro_train.stage[3].ro.unit.recovery_flow_vol[0,'Liq'].setlb(.5)
+    m.fs.feed.properties[0].flow_vol_phase["Liq"].fix(0.176)
+
     print(f"Degrees of freedom after fixing: {degrees_of_freedom(m)}")
     results = optimize(m)
 
     print(
-        m.fs.ro_train.stage[3]
-        .pump.unit.control_volume.properties_out[0]
-        .conc_mass_phase_comp["Liq", "NaCl"]()
+        f"Stage 3 pump outlet conc (kg/m3): {m.fs.ro_train.stage[3].pump.unit.control_volume.properties_out[0].conc_mass_phase_comp['Liq', 'NaCl']():.1f}"
     )
     print(
-        value(
-            pyunits.convert(
-                m.fs.ro_train.stage[2]
-                .pump.unit.control_volume.properties_out[0]
-                .pressure,
-                to_units=pyunits.psi,
-            )
-        )
+        f"Stage 2 pump outlet pressure (psi): {value(pyunits.convert(m.fs.ro_train.stage[2].pump.unit.control_volume.properties_out[0].pressure, to_units=pyunits.psi)):.1f}"
     )
     print(
-        value(
-            pyunits.convert(
-                m.fs.ro_train.stage[3]
-                .pump.unit.control_volume.properties_in[0]
-                .pressure,
-                to_units=pyunits.psi,
-            )
-        )
+        f"Stage 3 pump inlet pressure (psi): {value(pyunits.convert(m.fs.ro_train.stage[3].pump.unit.control_volume.properties_in[0].pressure, to_units=pyunits.psi)):.1f}"
     )
     print(
-        value(
-            pyunits.convert(
-                m.fs.ro_train.stage[3]
-                .pump.unit.control_volume.properties_out[0]
-                .pressure,
-                to_units=pyunits.psi,
-            )
-        )
+        f"Stage 3 pump outlet pressure (psi): {value(pyunits.convert(m.fs.ro_train.stage[3].pump.unit.control_volume.properties_out[0].pressure, to_units=pyunits.psi)):.1f}"
     )
 
-    print(m.fs.ro_train.stage[3].feed.properties[0].flow_vol_phase["Liq"]())
-    print(m.fs.ro_train.stage[1].ro.unit.recovery_vol_phase[0, "Liq"]())
-    print(m.fs.ro_train.stage[2].ro.unit.recovery_vol_phase[0, "Liq"]())
-    print(m.fs.ro_train.stage[3].ro.unit.recovery_vol_phase[0, "Liq"]())
+    print(
+        f"Stage 3 feed flow vol (m3/s): {m.fs.ro_train.stage[3].feed.properties[0].flow_vol_phase['Liq']():.3f}"
+    )
+    print(
+        f"Stage 1 RR: {m.fs.ro_train.stage[1].ro.unit.recovery_vol_phase[0, 'Liq']():.3f}"
+    )
+    print(
+        f"Stage 2 RR: {m.fs.ro_train.stage[2].ro.unit.recovery_vol_phase[0, 'Liq']():.3f}"
+    )
+    print(
+        f"Stage 3 RR: {m.fs.ro_train.stage[3].ro.unit.recovery_vol_phase[0, 'Liq']():.3f}"
+    )
 
-    dt = DiagnosticsToolbox(m)
     assert_optimal_termination(results)
