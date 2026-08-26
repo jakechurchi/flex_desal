@@ -59,6 +59,7 @@ def print_arcs_to_port(model, port, port_name=""):
     print()
 
 
+# Debugging Tool
 def report_ports_with_multiple_arcs(model):
     """Report ports with more than one incoming or outgoing Arc."""
     from collections import defaultdict
@@ -201,7 +202,7 @@ def build_flowsheet(op_limits=None, scenario=None):
         )
         # m.fs.ro_train.stage[i].ro.unit.recovery_vol_phase[0, "Liq"].setlb(op_limits[f"Stage {i}"]["RR_min"])
         # m.fs.ro_train.stage[i].ro.unit.recovery_vol_phase[0, "Liq"].setub(op_limits[f"Stage {i}"]["RR_max"])
-    print(degrees_of_freedom(m))  # Should be zero.
+    print(f"Degrees of freedom: {degrees_of_freedom(m)}")  # Should be zero.
     return m
 
 
@@ -278,10 +279,6 @@ def initialize_model(m):
     blk.mixer.initialize()
     propagate_state(blk.mixer_to_product)
     blk.product.initialize()
-    print(blk.stage[3].ro.unit.recovery_vol_phase[0, "Liq"]())
-    print(blk.stage[3].feed.properties[0].flow_vol_phase["Liq"]())
-    print(blk.stage[2].pump.unit.control_volume.properties_out[0].pressure())
-    print(blk.stage[3].pump.unit.control_volume.properties_out[0].pressure())
 
     propagate_state(m.fs.train_to_product)
     m.fs.product.initialize()
@@ -322,16 +319,16 @@ def optimize(m, solver=None, check_termination=True):
     # --solve---
     solver = get_solver()
     try:
-        results = solver.solve(m, tee=True)
+        results = solver.solve(m)
         assert_optimal_termination(results)
     except Exception as e:
         print("-----FAILED TO SOLVE-----")
         print(f"Exception: {e}")
         print(f"RR = {m.fs.ro_train.stage[1].ro.unit.recovery_vol_phase[0, 'Liq']()}%")
         print(f"Qin = {m.fs.feed.properties[0].flow_vol_phase['Liq']()}")
-        dt = DiagnosticsToolbox(m)
-        dt.report_numerical_issues()
-        dt.display_constraints_with_large_residuals()
+        # dt = DiagnosticsToolbox(m)
+        # dt.report_numerical_issues()
+        # dt.display_constraints_with_large_residuals()
     return results
 
 
@@ -414,6 +411,7 @@ def build_outputs(m):
     # outputs["Stage3 Pump Speed (-)"] = pump3.design_speed_fraction # Pump 3 has no speed fraction
 
     return outputs
+
 
 # Debugging
 if __name__ == "__main__":

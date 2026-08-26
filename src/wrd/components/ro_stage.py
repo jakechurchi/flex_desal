@@ -173,31 +173,37 @@ def initialize_ro_stage(blk):
     propagate_state(blk.ro_to_product)
     blk.product.initialize()
     propagate_state(blk.ro_to_disposal)
-    blk.disposal.initialize()
+    # blk.disposal.initialize()
+    # I DONT KNOW WHY THIS IS REQUIRED, BUT THIS ALLOWS THE SOLVE TO OCCUR. OTHERWISE IT WILL FAIL?
+    try:
+        blk.disposal.initialize()
+    except InitializationError:
+        ro_disposal_props = blk.ro.disposal.properties[0]
+        try:
+            blk.disposal.initialize(
+                state_args={
+                    "flow_mass_phase_comp": {
+                        ("Liq", "H2O"): value(
+                            ro_disposal_props.flow_mass_phase_comp["Liq", "H2O"]
+                        ),
+                        ("Liq", "NaCl"): value(
+                            ro_disposal_props.flow_mass_phase_comp["Liq", "NaCl"]
+                        ),
+                    },
+                    "temperature": value(ro_disposal_props.temperature),
+                    "pressure": value(ro_disposal_props.pressure),
+                }
+            )
+        except InitializationError:
+            # This state block is a pass-through junction; if initialization fails,
+            # continue with propagated state so the full train can still initialize.
+            import warnings
 
-    # try:
-    #     blk.disposal.initialize()
-    # except InitializationError:
-    #     ro_disposal_props = blk.ro.disposal.properties[0]
-    #     try:
-    #         blk.disposal.initialize(
-    #             state_args={
-    #                 "flow_mass_phase_comp": {
-    #                     ("Liq", "H2O"): value(
-    #                         ro_disposal_props.flow_mass_phase_comp["Liq", "H2O"]
-    #                     ),
-    #                     ("Liq", "NaCl"): value(
-    #                         ro_disposal_props.flow_mass_phase_comp["Liq", "NaCl"]
-    #                     ),
-    #                 },
-    #                 "temperature": value(ro_disposal_props.temperature),
-    #                 "pressure": value(ro_disposal_props.pressure),
-    #             }
-    #         )
-    #     except InitializationError:
-    #         # This state block is a pass-through junction; if initialization fails,
-    #         # continue with propagated state so the full train can still initialize.
-    #         pass
+            warnings.warn(
+                "blk.disposal failed to initialize; continuing with propagated state.",
+                UserWarning,
+                stacklevel=2,
+            )
 
 
 def report_ro_stage(blk, w=30, add_costing=True):

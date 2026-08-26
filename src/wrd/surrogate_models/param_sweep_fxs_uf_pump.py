@@ -1,7 +1,6 @@
 from watertap.core.solvers import get_solver
 from parameter_sweep import LinearSample
 from wrd.components.detailed_pump import *
-from models import HeadLoss
 from pyomo.environ import (
     assert_optimal_termination,
     ConcreteModel,
@@ -29,6 +28,7 @@ __all__ = [
     "optimize",
     "build_outputs",
 ]
+
 
 # Build flowsheet function
 def build_flowsheet(op_limits=None, scenario=None):
@@ -160,6 +160,7 @@ def build_outputs(m):
     outputs = {}
     outputs["Stage1 Power"] = m.fs.pump.unit.work_mechanical[0]
     return outputs
+
 
 # Debugging
 if __name__ == "__main__":

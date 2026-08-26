@@ -1,4 +1,5 @@
 # Imports
+import logging
 from pathlib import Path
 from pprint import pprint
 from IPython import get_ipython
@@ -11,6 +12,9 @@ from wrd.surrogate_models.param_sweep_fxs_ro_train import (
     build_outputs,
     initialize_model,
 )
+
+logging.getLogger("idaes").setLevel(logging.WARNING)
+logging.getLogger("watertap").setLevel(logging.WARNING)
 
 
 def create_parameter_sweep_object(num_samples, num_procs, op_limits, var_lims):
@@ -38,7 +42,7 @@ def create_parameter_sweep_object(num_samples, num_procs, op_limits, var_lims):
         ),  # Store CSV next to this script
         "h5_parent_group_name": None,  # Useful for loop tool
         "update_sweep_params_before_init": False,
-        "initialize_before_sweep": False,  #!!!!!!!
+        "initialize_before_sweep": False,
         "reinitialize_function": None,
         "reinitialize_kwargs": {},
         "reinitialize_before_sweep": False,

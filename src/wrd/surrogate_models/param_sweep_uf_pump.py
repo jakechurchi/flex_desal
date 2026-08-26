@@ -1,6 +1,6 @@
 # Imports
+from pathlib import Path
 from pprint import pprint
-from IPython import get_ipython
 from watertap.core.solvers import get_solver
 from parameter_sweep import ParameterSweep
 from wrd.surrogate_models.param_sweep_fxs_uf_pump import (
@@ -32,7 +32,9 @@ def create_parameter_sweep_object(num_samples, num_procs, var_lims):
         "parallel_back_end": "MultiProcessing",  # ConcurrentFutures, MPI, Ray available
         "number_of_subprocesses": num_procs,
         # Additional useful keyword arguments
-        "csv_results_file_name": "up_pump_sweep.csv",  # For storing results as CSV
+        "csv_results_file_name": str(
+            Path(__file__).resolve().parent / "uf_sweep_USED_IN_PT.csv"
+        ),  # Store CSV next to this script,
         "h5_parent_group_name": None,  # Useful for loop tool
         "update_sweep_params_before_init": False,
         "initialize_before_sweep": False,
